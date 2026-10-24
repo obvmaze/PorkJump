@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#2b1055">
+  <title>Pork Jump</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game"></canvas>
+
+    <!-- Anzeige während der Runde -->
+    <div id="hud" class="hidden">
+      <div id="meters">0 m</div>
+      <div id="powerups">
+        <div class="pu hidden" id="puShoes"><span>Federschuhe</span><div class="bar"><i></i></div></div>
+        <div class="pu hidden" id="puBee"><span>Biene</span><div class="bar"><i></i></div></div>
+      </div>
+    </div>
+
+    <button id="btnPause" class="iconbtn hidden" aria-label="Pause"><span class="pausebars"></span></button>
+
+    <button id="btnLeft" class="ctrl hidden" aria-label="Links">
+      <svg viewBox="0 0 24 24"><path d="M15 4 L7 12 L15 20" /></svg>
+    </button>
+    <button id="btnRight" class="ctrl hidden" aria-label="Rechts">
+      <svg viewBox="0 0 24 24"><path d="M9 4 L17 12 L9 20" /></svg>
+    </button>
+
+    <!-- Hauptmenü -->
+    <div id="menu" class="screen">
+      <h1 class="title">Pork<br>Jump</h1>
+      <button id="btnGear" class="iconbtn" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+      </button>
+      <button id="btnStart" class="bigbtn">Start</button>
+      <div id="trophy">
+        <svg viewBox="0 0 64 64">
+          <path d="M18 8h28v14a14 14 0 0 1-28 0z" fill="#ffd23f" stroke="#7a4b00" stroke-width="3"/>
+          <path d="M18 12H8a10 10 0 0 0 12 14M46 12h10a10 10 0 0 1-12 14" fill="none" stroke="#7a4b00" stroke-width="3"/>
+          <rect x="28" y="35" width="8" height="10" fill="#f2b705" stroke="#7a4b00" stroke-width="3"/>
+          <rect x="20" y="45" width="24" height="9" rx="2" fill="#ffd23f" stroke="#7a4b00" stroke-width="3"/>
+          <path d="M24 12v8" stroke="#fff6c4" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span id="bestVal">0 m</span>
+      </div>
+    </div>
+
+    <!-- Einstellungen (Zahnrad) -->
+    <div id="settings" class="modal hidden">
+      <div class="panel">
+        <h2>Einstellungen</h2>
+        <button class="btn soundToggle">Sound: An</button>
+        <button class="btn" id="btnCloseSettings">Schließen</button>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause" class="modal hidden">
+      <div class="panel">
+        <h2>Pause</h2>
+        <button class="btn soundToggle">Sound: An</button>
+        <button class="btn" id="btnResume">Weiter</button>
+        <button class="btn" id="btnToMenu">Hauptmenü</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="over" class="modal hidden">
+      <div class="panel">
+        <h2>Autsch!</h2>
+        <p id="overScore">0 m</p>
+        <p id="overBest"></p>
+        <button class="btn" id="btnRetry">Nochmal</button>
+        <button class="btn" id="btnOverMenu">Hauptmenü</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
