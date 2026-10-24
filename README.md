@@ -1,8 +1,8 @@
 # Pork Jump 🐷
 
-Hochkant-Handyspiel im Stil von Doodle Jump – mit John Pork als Comic-Figur.
+Hochkant endless Jump 'n' Run mit John Pork in der Hauptrolle
 
-## Spielen
+## Spielen: https://claude.ai/artifact/2oTBmyx1Kstr6P5sn3DS4i
 
 - **Lokal:** `index.html` im Browser öffnen (Doppelklick reicht).
 - **Am PC:** Pfeiltasten / A-D zum Steuern, `P` oder `Esc` = Pause, `Enter` = Start.
