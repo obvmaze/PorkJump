@@ -110,15 +110,19 @@ function rgGap(w) {
   run.ground.push({ x0: run.genX, x1: run.genX });
 }
 
-// Hindernis-Typen: low (drüber), tall (hoch drüber), bar (drunter sliden),
+// Hindernis-Typen: low (drüber), tall (hoch drüber), bar (Stachelbalken: drunter sliden),
+// wall (Stachel-Mauer mit Durchschlupf: ganze Länge durchsliden),
 // flier (fliegt entgegen), roller (rollt entgegen)
-const OBS_SIZE = { low: [32, 30], tall: [34, 88], bar: [44, 0], flier: [34, 26], roller: [30, 30] };
+const OBS_SIZE = { low: [32, 30], tall: [34, 88], bar: [56, 0], wall: [120, 0], flier: [34, 26], roller: [30, 30] };
+const SLIDE_GAP = 36;            // Unterkante von Balken/Mauer über dem Boden
+const ANCHOR_UP = 330;           // so hoch hängt der Stahlträger (höher als jeder Sprung)
 
-function rgObstacle(kind, x, baseY) {
+function rgObstacle(kind, x, baseY, wOverride) {
   const gy = baseY === undefined ? run.gy : baseY;
-  const [w, h] = OBS_SIZE[kind];
+  const [w0, h] = OBS_SIZE[kind];
+  const w = wOverride || w0;
   const o = { kind, x, w, h, theme: themeAt(xToM(x)), dead: false, active: false, rot: 0, vx: 0, vy: 0, t: Math.random() * 6 };
-  if (kind === 'bar') { o.y = -400; o.h = gy - 36 + 400; }
+  if (kind === 'bar' || kind === 'wall') { o.y = -400; o.h = gy - SLIDE_GAP + 400; }
   else if (kind === 'flier') { o.base = gy - 64; o.y = o.base; o.vx = -80; }
   else if (kind === 'roller') { o.y = gy - h; o.vx = -150; }
   else o.y = gy - h;
@@ -129,13 +133,41 @@ function rgObstacle(kind, x, baseY) {
 function rgTruffle(x, y) {
   run.trufs.push({ x, y, taken: false });
 }
-// Trüffel im Bogen (über Hindernisse/Abgründe)
-function rgArc(x0, x1, peak, n) {
+// Simuliert einen Sprung (holdT = wie lange gehalten) und liefert die Flugbahn
+const pathCache = new Map();
+function jumpPath(sp, holdT) {
+  const key = Math.round(sp / 10) + '|' + holdT;
+  if (pathCache.has(key)) return pathCache.get(key);
+  const pts = [];
+  let y = 0, vy = -R.JUMP_V, t = 0;
+  while (t < 2) {
+    const g = vy < 0 && t < holdT ? R.G * R.HOLD_G : R.G;
+    vy += g * STEP;
+    y += vy * STEP;
+    t += STEP;
+    if (y >= 0) break;
+    pts.push([sp * t, y]);
+  }
+  pathCache.set(key, pts);
+  return pts;
+}
+// Trüffel genau dort, wo Porks Körper beim passenden Sprung entlangfliegt
+function rgJumpArc(xTakeoff, sp, holdT, n) {
+  const path = jumpPath(sp, holdT);
   for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 0.5 : i / (n - 1);
-    rgTruffle(lerp(x0, x1, t), run.gy - 24 - peak * 4 * t * (1 - t));
+    const k = Math.round((path.length - 1) * (0.22 + 0.56 * (n === 1 ? 0.5 : i / (n - 1))));
+    const [dx, dy] = path[k];
+    rgTruffle(xTakeoff + dx, run.gy - 28 + dy);
   }
 }
+// Bogen, dessen höchster Punkt über cx liegt
+function rgArcOver(cx, sp, holdT, n) {
+  const path = jumpPath(sp, holdT);
+  let apex = 0;
+  for (let i = 1; i < path.length; i++) if (path[i][1] < path[apex][1]) apex = i;
+  rgJumpArc(cx - path[apex][0], sp, holdT, n);
+}
+
 function rgLine(x0, x1, y, step) {
   for (let x = x0; x <= x1; x += step) rgTruffle(x, y);
 }
@@ -171,7 +203,7 @@ function runGen() {
   while (run.genX < run.camX + W * 3) rgPattern();
   // Alte Sachen hinter der Kamera wegräumen
   const gone = run.camX - 150;
-  run.obs = run.obs.filter(o => o.x + o.w > gone && o.y < H + 200);
+  run.obs = run.obs.filter(o => o.x + o.w > gone && o.y < H + 200 && !o.vanish);
   run.plats = run.plats.filter(p => p.x + p.w > gone);
   run.trufs = run.trufs.filter(t => t.x > gone && !t.taken);
   run.items = run.items.filter(t => t.x > gone && !t.taken);
@@ -185,7 +217,7 @@ function rgPattern() {
   // Verschnaufpause zwischen zwei Mustern
   rgFlat(sp * rand(0.5, 0.85) * (1.15 - d * 0.35));
 
-  const options = [['single', 30], ['pit', 18], ['trufline', 8]];
+  const options = [['single', 30], ['pit', 18], ['trufline', 5]];
   if (m > 60) options.push(['double', 10 + 12 * d]);
   if (m > 45) options.push(['upper', 11]);
   if (m > 80) options.push(['bridge', 12 + 6 * d]);
@@ -199,30 +231,32 @@ function rgPattern() {
   if (m > 60) kinds.push('bar');
   if (m > 100) kinds.push('flier');
   if (m > 140) kinds.push('tall');
+  if (m > 90) kinds.push('wall');
 
   switch (kind) {
     case 'single': {
       const k = pick(kinds);
       if (k === 'roller' || k === 'flier') rgFlat(150);  // Platz, weil sie entgegenkommen
       const x = run.genX + 20;
-      const o = rgObstacle(k, x);
-      if (k === 'bar') rgLine(x - 30, x + o.w + 40, run.gy - 14, 26);
-      else if (k === 'low' || k === 'tall') rgArc(x - 70, x + o.w + 70, k === 'tall' ? 150 : 95, 5);
+      const o = rgObstacle(k, x, undefined, k === 'wall' ? rand(100, 190) : undefined);
+      if (k === 'bar' || k === 'wall') rgLine(x + 6, x + o.w - 6, run.gy - 14, 36);
+      else if (k === 'low') rgArcOver(x + o.w / 2, sp, 0, 3);
+      else if (k === 'tall') rgArcOver(x + o.w / 2, sp, R.HOLD_T, 3);
       rgFlat(o.w + 60);
       break;
     }
     case 'double': {
       const combos = [['low', 'bar'], ['bar', 'low'], ['low', 'low'], ['bar', 'bar']];
-      if (m > 140) combos.push(['low', 'tall'], ['tall', 'bar']);
+      if (m > 140) combos.push(['low', 'tall'], ['tall', 'bar'], ['low', 'wall'], ['wall', 'low']);
       const [a, b] = pick(combos);
       const x1 = run.genX + 20;
-      const o1 = rgObstacle(a, x1);
+      const o1 = rgObstacle(a, x1, undefined, a === 'wall' ? rand(90, 150) : undefined);
       const gap = a === 'bar' && b === 'bar' ? rand(50, 90) : sp * rand(0.7, 0.9) + 40;
       const x2 = x1 + o1.w + gap;
-      const o2 = rgObstacle(b, x2);
+      const o2 = rgObstacle(b, x2, undefined, b === 'wall' ? rand(90, 150) : undefined);
       for (const o of [o1, o2]) {
-        if (o.kind === 'bar') rgLine(o.x - 10, o.x + o.w + 10, run.gy - 14, 26);
-        else rgArc(o.x - 50, o.x + o.w + 50, o.kind === 'tall' ? 140 : 85, 3);
+        if (o.kind === 'bar' || o.kind === 'wall') rgLine(o.x + 6, o.x + o.w - 6, run.gy - 14, 36);
+        else rgArcOver(o.x + o.w / 2, sp, o.kind === 'tall' ? R.HOLD_T : 0, o.kind === 'tall' ? 3 : 2);
       }
       run.genX = x2;
       rgFlat(o2.w + 60);
@@ -230,7 +264,7 @@ function rgPattern() {
     }
     case 'pit': {
       const w = rand(60, Math.min(sp * 0.55, 80 + d * 150));
-      rgArc(run.genX - 30, run.genX + w + 30, 70 + w * 0.25, 5);
+      rgJumpArc(run.genX - 25, sp, R.HOLD_T, 3);   // Bahn eines gehaltenen Sprungs kurz vor der Kante
       rgGap(w);
       rgFlat(60);
       break;
@@ -245,7 +279,7 @@ function rgPattern() {
       for (let i = 0; i < n; i++) {
         const w = rand(110, 180);
         last = rgPlatform(x, y, w);
-        rgLine(x + 20, x + w - 20, y - 26, 30);
+        rgLine(x + 25, x + w - 25, y - 28, 44);
         if (d > 0.35 && w > 150 && Math.random() < 0.35) rgObstacle('low', x + w * 0.55, y);
         else if (i === n - 1) maybeItem(x + w * 0.5, y - 90);
         x += w + rand(50, sp * 0.38);
@@ -265,7 +299,7 @@ function rgPattern() {
       const pw = len - 160;
       const py = run.gy - 135;
       rgPlatform(px, py, pw);
-      rgLine(px + 20, px + pw - 20, py - 26, 26);
+      rgLine(px + 25, px + pw - 25, py - 28, 40);
       maybeItem(px + pw * 0.6, py - 80);
       const nObs = randInt(1, 2);
       for (let i = 0; i < nObs; i++) rgObstacle('low', x0 + 170 + i * (len - 260));
@@ -274,8 +308,8 @@ function rgPattern() {
     }
     case 'trufline': {
       const len = rand(220, 340);
-      for (let x = run.genX + 20; x < run.genX + len; x += 26) {
-        rgTruffle(x, run.gy - 26 - Math.max(0, Math.sin((x - run.genX) * 0.02)) * 60);
+      for (let x = run.genX + 20; x < run.genX + len; x += 40) {
+        rgTruffle(x, run.gy - 28 - Math.max(0, Math.sin((x - run.genX) * 0.02)) * 50);
       }
       maybeItem(run.genX + len * 0.5, run.gy - 110);
       rgFlat(len);
@@ -303,7 +337,14 @@ function runPopup(x, y, text, color) {
 }
 
 function smash(o) {
-  if (o.kind === 'bar') { o.y = run.gy - 52; o.h = 16; }  // nur der Balken fliegt weg
+  if (o.kind === 'bar') { o.y = run.gy - 82; o.h = 46; }  // nur der Stachelbalken fliegt weg
+  if (o.kind === 'wall') {                                   // Mauer zerbröselt
+    o.vanish = true;
+    for (let i = 0; i < 26; i++) {
+      particles.push({ x: o.x + rand(0, o.w), y: run.gy - rand(40, 200), vx: rand(-80, 260), vy: rand(-300, 0),
+        life: 0.7, max: 0.7, r: rand(3, 6), color: i % 2 ? THEMES[o.theme].plat.base : THEMES[o.theme].plat.top });
+    }
+  }
   o.dead = true;
   o.vx = rand(250, 400);
   o.vy = rand(-500, -350);
@@ -521,10 +562,27 @@ function runUpdate(dt) {
    ZEICHNEN
    ========================================================= */
 
+// Schleier über dem Hintergrund: Je näher am Boden, desto mehr tritt die Kulisse zurück,
+// damit Hindernisse und Pork klar davor stehen
+const HAZE = {
+  beach: [255, 214, 175], forest: [18, 14, 48], snow: [228, 242, 255], fireworks: [44, 10, 32],
+  desert: [255, 196, 150], cave: [5, 12, 16], candy: [255, 224, 242], lab: [8, 18, 20],
+  sky: [228, 244, 255], aurora: [5, 14, 34], space: [6, 4, 20]
+};
+function drawRunHaze(th) {
+  const [r, g, b] = HAZE[themeKey(th)];
+  const gr = ctx.createLinearGradient(0, 0, 0, run.gy);
+  gr.addColorStop(0, `rgba(${r},${g},${b},0.1)`);
+  gr.addColorStop(0.6, `rgba(${r},${g},${b},0.42)`);
+  gr.addColorStop(1, `rgba(${r},${g},${b},0.66)`);
+  ctx.fillStyle = gr;
+  ctx.fillRect(0, 0, W, run.gy);
+}
+
 // Parallax-Hügel, damit man das Tempo spürt
 function drawRunParallax(th) {
   const col = THEMES[th].plat.line;
-  const layers = [[0.12, 0.3, 30, run.gy - 50, 0.011], [0.3, 0.45, 20, run.gy - 14, 0.019]];
+  const layers = [[0.12, 0.22, 30, run.gy - 50, 0.011], [0.3, 0.3, 20, run.gy - 14, 0.019]];
   for (const [f, a, amp, base, fr] of layers) {
     ctx.globalAlpha = a;
     ctx.fillStyle = col;
@@ -602,12 +660,28 @@ function drawTruffle(x, y) {
 function drawRunItem(it) {
   const y = it.y + Math.sin(gameT * 3 + it.x) * 4;
   const x = it.x;
-  const ringCol = { magnet: 'rgba(255,90,90,0.5)', shield: 'rgba(110,231,255,0.55)', turbo: 'rgba(255,210,63,0.6)', heart: 'rgba(255,77,109,0.5)' }[it.type];
-  glow(ctx, x, y, 30, ringCol);
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 2;
+  const col = { magnet: [255, 70, 70], shield: [60, 210, 255], turbo: [255, 190, 20], heart: [255, 60, 140] }[it.type];
+  const pulse = 1 + Math.sin(gameT * 6) * 0.08;
+  glow(ctx, x, y, 54 * pulse, `rgba(${col},0.75)`);
+  glow(ctx, x, y, 28, 'rgba(255,255,255,0.7)');
+  // Funkel-Sterne drumherum
+  ctx.fillStyle = '#ffffff';
+  for (let k = 0; k < 4; k++) {
+    const a = gameT * 2 + k * Math.PI / 2;
+    const sx = x + Math.cos(a) * 27, sy = y + Math.sin(a) * 27, s = 2.5 + Math.sin(gameT * 9 + k) * 1.2;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - s * 1.8); ctx.lineTo(sx + s * 0.5, sy - s * 0.5); ctx.lineTo(sx + s * 1.8, sy);
+    ctx.lineTo(sx + s * 0.5, sy + s * 0.5); ctx.lineTo(sx, sy + s * 1.8); ctx.lineTo(sx - s * 0.5, sy + s * 0.5);
+    ctx.lineTo(sx - s * 1.8, sy); ctx.lineTo(sx - s * 0.5, sy - s * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.strokeStyle = `rgb(${col})`;
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.arc(x, y, 16 + Math.sin(gameT * 5) * 1.5, 0, Math.PI * 2);
+  ctx.arc(x, y, 17 * pulse, 0, Math.PI * 2);
+  ctx.fill();
   ctx.stroke();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
@@ -627,7 +701,7 @@ function drawRunItem(it) {
     ctx.fillRect(x - 9.7, y - 11, 5.4, 4);
     ctx.fillRect(x + 4.3, y - 11, 5.4, 4);
   } else if (it.type === 'shield') {
-    ctx.fillStyle = '#6ee7ff';
+    ctx.fillStyle = '#2bb8f0';
     ctx.strokeStyle = OL;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
@@ -917,7 +991,7 @@ const LOW_SKINS = {
     ctx.beginPath(); ctx.moveTo(w - 8, 6); ctx.lineTo(w - 14, 16); ctx.lineTo(w - 10, 22); ctx.stroke();
   },
   space(w, h) {   // Meteoritenbrocken
-    ctx.fillStyle = '#6b6b7d';
+    ctx.fillStyle = '#9696aa';
     ctx.strokeStyle = '#25252f';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -934,9 +1008,9 @@ const LOW_SKINS = {
 
 const FLIER_SKINS = {
   beach(c) { bird(c, '#ffffff', '#b8c4d0', '#ff9f1a'); },           // Möwe
-  forest(c) { owl(c, '#8a5a3b', '#e8c9a0'); },                       // Eule
+  forest(c) { owl(c, '#c48a55', '#f2dcb8'); },                       // Eule
   snow(c) { owl(c, '#f4f8ff', '#dfe8f5'); },                         // Schneeeule
-  desert(c) { bird(c, '#5a3a24', '#3d2616', '#e8c27a', '#e89aa8'); },// Geier
+  desert(c) { bird(c, '#9a6a44', '#74482a', '#f2cf86', '#f2a8b6'); },// Geier
   sky(c) { bird(c, '#4dabf7', '#1c7ed6', '#ffd23f'); },              // Blauvogel
   fireworks(c) {   // Rakete
     ctx.fillStyle = `rgba(255,${150 + Math.random() * 80},60,0.9)`;
@@ -1050,7 +1124,7 @@ function drawRoller(o) {
   const ball = (col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); };
   switch (key) {
     case 'beach':   // Kokosnuss
-      ball('#6b4423');
+      ball('#9a6434');
       ctx.strokeStyle = '#8a5f3a';
       ctx.lineWidth = 1.2;
       for (let k = 0; k < 8; k++) { ctx.beginPath(); ctx.arc(0, 0, r - 3, k * 0.8, k * 0.8 + 0.4); ctx.stroke(); }
@@ -1058,7 +1132,7 @@ function drawRoller(o) {
       circle(ctx, -4, -3, 2); circle(ctx, 4, -3, 2); circle(ctx, 0, 3, 2);
       break;
     case 'forest':  // Igel
-      ctx.fillStyle = '#5a3a24';
+      ctx.fillStyle = '#9a6a44';
       ctx.beginPath();
       for (let k = 0; k < 16; k++) {
         const a = (k / 16) * Math.PI * 2;
@@ -1103,8 +1177,8 @@ function drawRoller(o) {
       }
       break;
     case 'cave':    // Felsbrocken
-      ball('#5f6670');
-      ctx.fillStyle = '#4a5058';
+      ball('#9aa3ad');
+      ctx.fillStyle = '#7a838c';
       circle(ctx, -5, -4, 4); circle(ctx, 6, 5, 3);
       ctx.fillStyle = '#3d7a3a';
       circle(ctx, 3, -10, 3);
@@ -1138,8 +1212,8 @@ function drawRoller(o) {
       ctx.stroke();
       break;
     default:        // Asteroid
-      ball('#7a6a5a');
-      ctx.fillStyle = '#5e5044';
+      ball('#b39a7e');
+      ctx.fillStyle = '#8a7560';
       circle(ctx, -5, -3, 4); circle(ctx, 6, 4, 3); circle(ctx, 2, -9, 2);
   }
   ctx.restore();
@@ -1153,7 +1227,151 @@ function drawRoller(o) {
   }
 }
 
+function drawChain(x, y0, y1) {
+  for (let y = y0, k = 0; y < y1; y += 10, k++) {
+    if (k % 2 === 0) {
+      ctx.strokeStyle = '#15181c';
+      ctx.lineWidth = 4.6;
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 4, 6.5, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#9aa4b0';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.strokeStyle = '#e8edf2';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 4, 6.5, 0, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#15181c';
+      ctx.fillRect(x - 2.4, y - 1, 4.8, 12);
+      ctx.fillStyle = '#9aa4b0';
+      ctx.fillRect(x - 1.1, y, 2.2, 10);
+    }
+  }
+}
+
+// Stahlträger oben, an dem Balken/Mauer hängen
+function drawGirder(x, w, y) {
+  ctx.fillStyle = '#5a636e';
+  ctx.strokeStyle = '#15181c';
+  ctx.lineWidth = 2.5;
+  rr(ctx, x, y - 20, w, 20, 3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(x + 2, y - 18, w - 4, 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let k = x + 4; k < x + w - 14; k += 18) { ctx.moveTo(k, y - 3); ctx.lineTo(k + 14, y - 17); }
+  ctx.stroke();
+  ctx.fillStyle = '#9aa3ad';
+  for (let k = x + 6; k < x + w - 2; k += 14) { circle(ctx, k, y - 16, 1.6); circle(ctx, k, y - 4, 1.6); }
+}
+
+function drawSpikes(x0, x1, y, dir, size) {
+  ctx.fillStyle = '#e4e8ee';
+  ctx.strokeStyle = '#1d2026';
+  ctx.lineWidth = 2;
+  const n = Math.max(2, Math.round((x1 - x0) / (size * 0.9)));
+  const sw = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * sw;
+    ctx.beginPath();
+    ctx.moveTo(a, y);
+    ctx.lineTo(a + sw / 2, y + dir * size);
+    ctx.lineTo(a + sw, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  for (let i = 0; i < n; i++) circle(ctx, x0 + i * sw + sw * 0.4, y + dir * size * 0.35, 1);
+}
+
+// Stachelbalken: Körper liegt bei by..by+24, Stacheln oben und unten
+function drawSpikeBeam(o, by) {
+  const th = THEMES[o.theme].plat;
+  drawSpikes(o.x - 6, o.x + o.w + 6, by, -1, 11);
+  drawSpikes(o.x - 4, o.x + o.w + 4, by + 24, 1, 12);
+  ctx.fillStyle = th.base;
+  ctx.strokeStyle = '#15181c';
+  ctx.lineWidth = 3;
+  rr(ctx, o.x - 10, by, o.w + 20, 24, 6); ctx.fill(); ctx.stroke();
+  ctx.save();
+  rr(ctx, o.x - 10, by, o.w + 20, 24, 6);
+  ctx.clip();
+  ctx.fillStyle = '#2a2e35';
+  for (let x = o.x - 10; x < o.x + o.w + 20; x += 18) {
+    ctx.beginPath(); ctx.moveTo(x, by + 24); ctx.lineTo(x + 9, by); ctx.lineTo(x + 15, by); ctx.lineTo(x + 6, by + 24); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(o.x - 10, by + 3, o.w + 20, 3);
+  ctx.restore();
+  ctx.fillStyle = '#9aa3ad';
+  for (const bx of [o.x + 8, o.x + o.w - 8]) {
+    ctx.strokeStyle = '#15181c';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(bx, by + 12, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawHanging(o) {
+  const gy = run.gy;
+  const ay = gy - ANCHOR_UP;
+  if (o.kind === 'bar') {
+    const by = gy - SLIDE_GAP - 12 - 24;
+    drawGirder(o.x - 22, o.w + 44, ay);
+    drawChain(o.x + 8, ay, by - 6);
+    drawChain(o.x + o.w - 8, ay, by - 6);
+    drawSpikeBeam(o, by);
+    return;
+  }
+  // Mauer mit Durchschlupf
+  const th = THEMES[o.theme].plat;
+  const bot = gy - SLIDE_GAP - 12;     // Unterkante der Mauer (darunter Stacheln)
+  ctx.fillStyle = th.base;
+  ctx.strokeStyle = th.line;
+  ctx.lineWidth = 3;
+  ctx.fillRect(o.x, ay, o.w, bot - ay);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(o.x, ay, o.w, bot - ay); ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 2;
+  for (let y = ay, r = 0; y < bot; y += 18, r++) {
+    ctx.beginPath(); ctx.moveTo(o.x, y); ctx.lineTo(o.x + o.w, y); ctx.stroke();
+    for (let x = o.x + (r % 2 ? 0 : 17); x < o.x + o.w; x += 34) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 18); ctx.stroke(); }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(o.x, ay, 6, bot - ay);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(o.x + o.w - 8, ay, 8, bot - ay);
+  ctx.restore();
+  ctx.strokeStyle = th.line;
+  ctx.strokeRect(o.x, ay, o.w, bot - ay);
+  // Warnstreifen + Stacheln an der Unterkante
+  ctx.save();
+  ctx.beginPath(); ctx.rect(o.x, bot - 10, o.w, 10); ctx.clip();
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(o.x, bot - 10, o.w, 10);
+  ctx.fillStyle = '#1d2026';
+  for (let x = o.x - 10; x < o.x + o.w; x += 16) {
+    ctx.beginPath(); ctx.moveTo(x, bot); ctx.lineTo(x + 10, bot - 10); ctx.lineTo(x + 16, bot - 10); ctx.lineTo(x + 6, bot); ctx.fill();
+  }
+  ctx.restore();
+  drawSpikes(o.x + 2, o.x + o.w - 2, bot, 1, 12);
+  drawGirder(o.x - 14, o.w + 28, ay);
+}
+
+const DARK_THEMES = new Set(['forest', 'fireworks', 'cave', 'lab', 'aurora', 'space']);
+
 function drawObstacle(o) {
+  if (o.vanish) return;
+  if (!o.dead && (o.kind === 'bar' || o.kind === 'wall')) { drawHanging(o); return; }
+  const dark = DARK_THEMES.has(themeKey(o.theme));
+  if (!o.dead) {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    if (o.kind === 'flier' || o.kind === 'roller') {   // rote Gefahren-Aura
+      glow(ctx, cx, cy, 34, `rgba(255,60,60,${0.32 + Math.sin(gameT * 8) * 0.1})`);
+    }
+    if (dark) glow(ctx, cx, cy, Math.max(o.w, o.h) * 0.8 + 14, 'rgba(255,255,255,0.22)');
+  }
   if (o.kind === 'roller') { drawRoller(o); return; }
   const key = themeKey(o.theme);
   const th = THEMES[o.theme].plat;
@@ -1189,30 +1407,8 @@ function drawObstacle(o) {
       break;
     }
     case 'bar': {
-      const by = o.dead ? 0 : run.gy - 36 - o.y - 16;
-      if (!o.dead) {   // Ketten nach oben
-        ctx.strokeStyle = '#6b7480';
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath(); ctx.moveTo(8, by); ctx.lineTo(8, by - 420); ctx.moveTo(o.w - 8, by); ctx.lineTo(o.w - 8, by - 420); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      ctx.fillStyle = th.base;
-      ctx.strokeStyle = th.line;
-      ctx.lineWidth = 2.5;
-      rr(ctx, -8, by, o.w + 16, 16, 5); ctx.fill(); ctx.stroke();
-      ctx.save();
-      rr(ctx, -8, by, o.w + 16, 16, 5);
-      ctx.clip();
-      ctx.fillStyle = th.top;
-      for (let x = -8; x < o.w + 16; x += 14) {
-        ctx.beginPath(); ctx.moveTo(x, by + 16); ctx.lineTo(x + 7, by); ctx.lineTo(x + 12, by); ctx.lineTo(x + 5, by + 16); ctx.fill();
-      }
-      ctx.restore();
-      ctx.fillStyle = th.top;
-      for (let x = -4; x < o.w + 8; x += 8) {
-        ctx.beginPath(); ctx.moveTo(x, by + 16); ctx.lineTo(x + 3, by + 21); ctx.lineTo(x + 6, by + 16); ctx.fill();
-      }
+      ctx.translate(-o.x, 11);
+      drawSpikeBeam(o, 0);
       break;
     }
   }
@@ -1244,6 +1440,7 @@ function runRender() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const m = xToM(Math.max(0, run.camX + W * 0.2));
   drawBackground(gameT, m);
+  drawRunHaze(themeAt(m));
   drawRunParallax(themeAt(m));
 
   ctx.save();
@@ -1253,12 +1450,12 @@ function runRender() {
   for (let i = 0; i + 1 < run.ground.length; i++) {
     const x0 = run.ground[i].x1, x1 = run.ground[i + 1].x0;
     if (x1 <= x0 || x1 < run.camX || x0 > run.camX + W) continue;
-    const pit = ctx.createLinearGradient(0, run.gy - 10, 0, H);
-    pit.addColorStop(0, 'rgba(10,4,20,0.25)');
-    pit.addColorStop(0.35, 'rgba(10,4,20,0.75)');
-    pit.addColorStop(1, 'rgba(5,2,10,0.95)');
+    const pit = ctx.createLinearGradient(0, run.gy, 0, H);
+    pit.addColorStop(0, 'rgba(10,4,20,0.55)');
+    pit.addColorStop(0.3, 'rgba(10,4,20,0.85)');
+    pit.addColorStop(1, 'rgba(5,2,10,0.97)');
     ctx.fillStyle = pit;
-    ctx.fillRect(x0, run.gy - 10, x1 - x0, H - run.gy + 10);
+    ctx.fillRect(x0, run.gy, x1 - x0, H - run.gy);
   }
   for (const g of run.ground) drawRunGround(g);
   drawRunBestFlag();
@@ -1282,6 +1479,7 @@ function runRender() {
   const blink = run.invuln > 0 && !run.dying && Math.floor(gameT * 14) % 2 === 0;
   if (!blink) {
     if (run.turbo > 0) glow(ctx, p.x, p.y - 28, 45, `hsla(${(gameT * 500) % 360},100%,60%,0.55)`);
+    else if (DARK_THEMES.has(themeKey(themeAt(xToM(p.x))))) glow(ctx, p.x, p.y - 30, 48, 'rgba(255,235,240,0.2)');
     drawPork(p, p.x);
   }
   if (run.shield) {
@@ -1328,6 +1526,45 @@ function runRender() {
       const xx = W - wrapMod(a.x * W + gameT * (1500 + a.s * 800), W + 120);
       ctx.beginPath(); ctx.moveTo(xx, a.y * run.gy); ctx.lineTo(xx + 40 + a.s * 40, a.y * run.gy); ctx.stroke();
     }
+  }
+  // "!" am rechten Rand: gleich kommt etwas entgegen
+  for (const o of run.obs) {
+    if (o.dead || o.active || (o.kind !== 'flier' && o.kind !== 'roller')) continue;
+    if (o.x > run.camX + W + 340) continue;
+    const wy = clamp(o.y + o.h / 2, 90, run.gy - 14);
+    const pr = 13 + Math.sin(gameT * 14) * 2;
+    glow(ctx, W - 22, wy, 30, 'rgba(255,60,60,0.6)');
+    ctx.fillStyle = '#ff3b4f';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(W - 22, wy, pr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '18px "Luckiest Guy", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', W - 22, wy + 7);
+  }
+  // Steuerungs-Hinweise am Anfang jedes Runs
+  if (gameT < 5) {
+    const a = Math.min(1, (5 - gameT) / 1.2);
+    const wr = wrapEl.getBoundingClientRect();
+    const k = W / wr.width;
+    ctx.globalAlpha = a;
+    ctx.font = '15px "Luckiest Guy", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#3b1d2a';
+    ctx.fillStyle = '#ffffff';
+    for (const [btn, lines] of [[el.left, ['Sliden', '(in der Luft: runter)']], [el.right, ['Springen', 'halten = höher', '2x = Doppelsprung']]]) {
+      const b = btn.getBoundingClientRect();
+      const cx = (b.left + b.width / 2 - wr.left) * k;
+      let ty = (b.top - wr.top) * k - 10 - (lines.length - 1) * 17;
+      for (const line of lines) {
+        ctx.strokeText(line, cx, ty);
+        ctx.fillText(line, cx, ty);
+        ty += 17;
+      }
+    }
+    ctx.globalAlpha = 1;
   }
   if (run.hurtFlash > 0) {
     ctx.fillStyle = `rgba(255,40,60,${run.hurtFlash * 0.5})`;

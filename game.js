@@ -7,7 +7,7 @@
    ========================================================= */
 
 // ---------- Spiel-Konstanten (hier kann man am Gameplay drehen) ----------
-const VERSION = '1.2';
+const VERSION = '1.3';
 const W = 400;               // logische Breite der Welt
 const G = 1800;                // Schwerkraft (Einheiten/s²)
 const JUMP_V = 900;            // Absprung-Geschwindigkeit
@@ -1015,12 +1015,12 @@ function pipe(g, pts, glass) {
   g.lineWidth = 17;
   g.stroke();
   line();
-  g.strokeStyle = glass ? 'rgba(170,255,190,0.25)' : '#71818d';
+  g.strokeStyle = glass ? 'rgba(150,220,170,0.18)' : '#46525b';
   g.lineWidth = 13;
   g.stroke();
   if (glass) {
     line();
-    g.strokeStyle = '#39ff6a';
+    g.strokeStyle = '#2f9e50';
     g.lineWidth = 7;
     g.stroke();
     line();
@@ -1028,7 +1028,7 @@ function pipe(g, pts, glass) {
     g.lineWidth = 1.5;
     g.stroke();
   }
-  g.fillStyle = '#5b6873';
+  g.fillStyle = '#3e4a52';
   for (const [x, y] of pts) circle(g, x, y, 10);
   g.fillStyle = '#2b343b';
   for (const [x, y] of pts) circle(g, x, y, 2.5);
@@ -1044,33 +1044,18 @@ const LABWORLD = {
     g.lineWidth = 1;
     for (let x = 0; x < w; x += 28) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
     for (let y = 0; y < h; y += 28) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-    glow(g, w * 0.2, h * 0.6, 160, 'rgba(60,255,100,0.18)');
+    glow(g, w * 0.2, h * 0.6, 160, 'rgba(60,255,100,0.1)');
     pipe(g, [[-10, h * 0.1], [w * 0.38, h * 0.1], [w * 0.38, h * 0.26], [w + 10, h * 0.26]], true);
     pipe(g, [[w * 0.9, -10], [w * 0.9, h * 0.5], [w * 0.55, h * 0.5]], false);
     pipe(g, [[w * 0.185, h * 0.26], [w * 0.185, h * LAB.tank[1] - 8]], true);
-    // Warnschild
-    const sx = w * 0.62, sy = h * 0.36;
-    g.fillStyle = '#ffd23f';
-    g.strokeStyle = '#111';
-    g.lineWidth = 2.5;
-    g.beginPath();
-    g.moveTo(sx, sy - 18);
-    g.lineTo(sx + 18, sy + 13);
-    g.lineTo(sx - 18, sy + 13);
-    g.closePath();
-    g.fill();
-    g.stroke();
-    g.fillStyle = '#111';
-    g.fillRect(sx - 1.8, sy - 7, 3.6, 11);
-    circle(g, sx, sy + 8, 2);
     // Großer Tank mit Giftbrühe
     const [tx0, ty0, tx1, ty1] = LAB.tank;
     const X0 = tx0 * w, Y0 = ty0 * h, X1 = tx1 * w, Y1 = ty1 * h;
     g.fillStyle = 'rgba(180,255,220,0.08)';
     g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
     const lg = g.createLinearGradient(0, Y0, 0, Y1);
-    lg.addColorStop(0, '#7dff6a');
-    lg.addColorStop(1, '#1a8f2a');
+    lg.addColorStop(0, '#46b85a');
+    lg.addColorStop(1, '#16552a');
     g.fillStyle = lg;
     g.fillRect(X0, Y0 + (Y1 - Y0) * 0.25, X1 - X0, (Y1 - Y0) * 0.75);
     g.fillStyle = 'rgba(255,255,255,0.18)';
@@ -1083,12 +1068,14 @@ const LABWORLD = {
     g.strokeStyle = '#9fb0bc';
     g.lineWidth = 2;
     g.strokeRect(X0, Y0, X1 - X0, Y1 - Y0);
-    // Regal mit Kolben
+    // Regal mit Kolben (weit oben und blass, damit es Hintergrund bleibt)
+    g.globalAlpha = 0.55;
     g.fillStyle = '#4a3a2c';
-    g.fillRect(w * 0.48, h * 0.62, w * 0.46, 6);
-    erlenmeyer(g, w * 0.55, h * 0.62, 1, '#b84dff');
-    erlenmeyer(g, w * 0.7, h * 0.62, 0.8, '#39ff6a');
-    erlenmeyer(g, w * 0.85, h * 0.62, 1.1, '#4dc3ff');
+    g.fillRect(w * 0.48, h * 0.42, w * 0.46, 6);
+    erlenmeyer(g, w * 0.55, h * 0.42, 1, '#8a4dbf');
+    erlenmeyer(g, w * 0.7, h * 0.42, 0.8, '#2f9e50');
+    erlenmeyer(g, w * 0.85, h * 0.42, 1.1, '#3a8fbf');
+    g.globalAlpha = 1;
     // Labortisch
     g.fillStyle = '#26323a';
     g.fillRect(0, h * 0.86, w, h * 0.14);
@@ -1144,6 +1131,9 @@ const LABWORLD = {
     g.ellipse(w * 0.45, h * 0.95, 34, 5, 0, 0, Math.PI * 2);
     g.fill();
     glow(g, w * 0.45, h * 0.95, 40, 'rgba(60,255,100,0.3)');
+    // Nebel-Schleier: drückt alles in den Hintergrund
+    g.fillStyle = 'rgba(12,22,24,0.35)';
+    g.fillRect(0, 0, w, h);
   }
 };
 
