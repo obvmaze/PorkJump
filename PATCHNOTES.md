@@ -9,7 +9,7 @@
 - **Items:** spawnen **30 % seltener**.
 - **Plattformen:** überlappen oder kreuzen sich nicht mehr. Bewegliche Plattformen haben jetzt immer genug Platz nach oben und unten.
 - **Welten:** wechseln jetzt alle **400 m** (vorher 300 m). Wenn alle Welten durch sind, kommen sie in einer **neu gemischten Reihenfolge** wieder. Jede Welt ist in jeder Runde einmal dabei.
-- **John Pork:** deutlich detaillierter: Schattierung, Iris und Lider, Borstenhaare, glänzender Rüssel, T-Shirt mit Ärmeln und Falten, Jeans mit Naht, Gürtel und Sneaker.
+- **John Pork:** neu gezeichnet nach dem Original-Meme, cleaner Look: glatter rosa Kopf, seitliche Schlappohren, kleine ruhige Augen, großer runder Rüssel, breites Grinsen, graues Shirt mit offenem rot kariertem Flanellhemd.
 - Unten rechts gibt's jetzt eine kleine **Versionsanzeige**.
 
 ### Neu
