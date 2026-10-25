@@ -2281,16 +2281,27 @@ function drawPork(p, x) {
   }
 
   // Arme in Flanell-Ärmeln
-  const arms = armsUp
-    ? [[-10, -30, -18, -48], [10, -30, 18, -48]]
-    : [[-10, -30, -18, -18], [10, -30, 18, -18]];
-  for (const [ax, ay, bx, by] of arms) {
+  // Arme als Punktlisten [Schulter, (Ellbogen), Hand]
+  const onPhone = p.call && p.call.phase !== 'fly';
+  const arms = [-1, 1].map(d => {
+    if (onPhone && d === f) return [[d * 10, -30], [d * 21, -34], [d * 19, -45]]; // Handy am Ohr
+    return armsUp ? [[d * 10, -30], [d * 18, -48]] : [[d * 10, -30], [d * 18, -18]];
+  });
+  const armPath = pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (const [px, py] of pts) ctx.lineTo(px, py);
+  };
+  for (const pts of arms) {
     ctx.strokeStyle = OL;
     ctx.lineWidth = 8.5;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    armPath(pts);
+    ctx.stroke();
     ctx.strokeStyle = FLANNEL;
     ctx.lineWidth = 5.5;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    armPath(pts);
+    ctx.stroke();
+    const [bx, by] = pts[pts.length - 1];
     ctx.fillStyle = SKIN;
     ctx.strokeStyle = OL;
     ctx.lineWidth = 1.8;
