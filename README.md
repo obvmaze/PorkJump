@@ -10,11 +10,11 @@ Hochkant endless Jump 'n' Run mit John Pork in der Hauptrolle
 
 ## Features
 
-Aktuelle Version: **1.1**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES.md).
+Aktuelle Version: **1.2**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES.md).
 
 - Unendliche, zufällige Plattformen – wird mit der Höhe schwerer, mit leichten und harten Passagen; ab und zu bewegliche Plattformen
 - 11 Comic-Welten, alle 400 m ein Wechsel: Strand bei Sonnenaufgang, Zauberwald, Verschneite Berge, Chinesisches Neujahr, Canyon bei Sonnenuntergang, Dunkle Grotte, Land der Süßigkeiten, Giftlabor, Wolkenkönigreich, Polarlichter bei Nacht, Weltall. Die Reihenfolge ist jeden Run zufällig.
-- Gegenstände: **Trampolin** (Mega-Sprung), **Federschuhe** (15 s doppelt so hohe Sprünge, ab und zu ein Salto), **Biene** (trägt dich 3 s nach oben)
+- Gegenstände: **Trampolin** (Mega-Sprung), **Federschuhe** (15 s doppelt so hohe Sprünge, ab und zu ein Salto), **Biene** (trägt dich 3 s nach oben), **Handy** (sehr selten: John Pork ruft an, ein Heli zieht dich 420 m hoch)
 - Meter-Anzeige, Pause-Menü (Sound an/aus, Hauptmenü), Bestleistung lokal gespeichert, Rekord-Linie im Level
 
 ## Dateien

@@ -7,7 +7,7 @@
    ========================================================= */
 
 // ---------- Spiel-Konstanten (hier kann man am Gameplay drehen) ----------
-const VERSION = '1.1';
+const VERSION = '1.2';
 const W = 400;               // logische Breite der Welt
 const G = 1800;                // Schwerkraft (Einheiten/s²)
 const JUMP_V = 900;            // Absprung-Geschwindigkeit

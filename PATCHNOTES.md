@@ -1,5 +1,18 @@
 # Pork Jump – Patchnotes
 
+## Version 1.2
+
+### Neues Item: Handy (John Pork ruft an!)
+- Ganz selten liegt ab 60 m ein **Handy** auf einer Plattform, ungefähr einmal alle 1.000 m. Es klingelt und vibriert.
+- **Einsammeln:** Alles bleibt stehen, der Bildschirm wird dunkel und es heißt „John Pork ruft an…“. Pork hält das Handy ans Ohr, man hört Wähltöne und das Freizeichen.
+- **Helikopter:** Ein pinker John-Pork-Heli knattert heran und lässt ein Seil runter, das Pork schnappt.
+- **Flug:** Es blitzt und Pork wird **5x so weit wie mit der Biene** (420 m) in Windeseile nach oben gezogen, mit Regenbogen-Effekt, Speed-Linien, Funken und Blitzen. Lenken geht dabei weiter.
+- **Landung:** Am Ende lässt der Heli los, Pork macht einen Salto und landet sicher auf einer Plattform, die extra unter ihm auftaucht.
+- Oben links zeigt ein Regenbogen-Balken, wie weit der Heli-Flug noch geht.
+
+### Änderungen
+- Die Versionsanzeige unten rechts steht jetzt auf **Version 1.2**.
+
 ## Version 1.1
 
 ### Änderungen
