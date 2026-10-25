@@ -20,10 +20,17 @@
     <!-- Anzeige während der Runde -->
     <div id="hud" class="hidden">
       <div id="meters">0 m</div>
+      <div id="runStats" class="hidden">
+        <div id="hearts"></div>
+        <div id="truffleCount"><i class="truffle-ico"></i><span>0</span></div>
+      </div>
       <div id="powerups">
         <div class="pu hidden" id="puShoes"><span>Federschuhe</span><div class="bar"><i></i></div></div>
         <div class="pu hidden" id="puBee"><span>Biene</span><div class="bar"><i></i></div></div>
         <div class="pu hidden" id="puHeli"><span>Heli</span><div class="bar"><i></i></div></div>
+        <div class="pu hidden" id="puMagnet"><span>Magnet</span><div class="bar"><i></i></div></div>
+        <div class="pu hidden" id="puShield"><span>Schild</span><div class="bar"><i></i></div></div>
+        <div class="pu hidden" id="puTurbo"><span>Turbo</span><div class="bar"><i></i></div></div>
       </div>
     </div>
 
@@ -51,7 +58,20 @@
           <rect x="20" y="45" width="24" height="9" rx="2" fill="#ffd23f" stroke="#7a4b00" stroke-width="3"/>
           <path d="M24 12v8" stroke="#fff6c4" stroke-width="3" stroke-linecap="round"/>
         </svg>
-        <span id="bestVal">0 m</span>
+        <div id="bestVal">
+          <span id="bestClassic">Classic 0 m</span>
+          <span id="bestRun">Run 0 m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modus-Auswahl nach "Start" -->
+    <div id="modeSelect" class="modal hidden">
+      <div class="panel">
+        <h2>Modus</h2>
+        <button class="btn mode" id="btnClassic">Classic<small>Endlos nach oben springen</small></button>
+        <button class="btn mode" id="btnRun">Run<small>Laufen, springen, sliden</small></button>
+        <button class="btn ghost" id="btnModeBack">Zurück</button>
       </div>
     </div>
 
@@ -78,6 +98,7 @@
       <div class="panel">
         <h2>Autsch!</h2>
         <p id="overScore">0 m</p>
+        <p id="overExtra" class="hidden"></p>
         <p id="overBest"></p>
         <button class="btn" id="btnRetry">Nochmal</button>
         <button class="btn" id="btnOverMenu">Hauptmenü</button>
@@ -87,5 +108,6 @@
   </div>
 
   <script src="game.js"></script>
+  <script src="run.js"></script>
 </body>
 </html>

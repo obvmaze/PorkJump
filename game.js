@@ -1395,6 +1395,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* egal */ } }
 };
 let best = store.get('porkjump_best', 0);
+let bestRun = store.get('porkjump_best_run', 0);
 let soundOn = store.get('porkjump_sound', true);
 
 /* =========================================================
@@ -1567,6 +1568,7 @@ const Sound = {
 /* =========================================================
    SPIELZUSTAND
    ========================================================= */
+let mode = 'classic';         // 'classic' | 'run'
 let state = 'menu';          // 'menu' | 'playing' | 'paused' | 'over'
 let platforms = [];
 let particles = [];
@@ -1579,7 +1581,7 @@ let itemCooldown = 0;
 let gameT = 0;               // Spielzeit (steht bei Pause)
 let menuT = 0;
 let meters = 0;
-const input = { left: false, right: false };
+const input = { left: false, right: false, rightPress: 0 }; // rightPress zählt Drücker (Sprung im Run-Modus)
 
 function newPlayer(x, y) {
   return {
@@ -2235,6 +2237,10 @@ function drawPork(p, x) {
     ctx.rotate(p.spin * p.spinDir);
     ctx.translate(0, 32);
   }
+  if (p.sliding) {               // Run-Modus: nach hinten gelehnt rutschen
+    ctx.translate(16 * f, -1);
+    ctx.rotate(-1.35 * f);
+  }
   const lift = p.shoes > 0 ? 9 : 0;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
@@ -2254,16 +2260,28 @@ function drawPork(p, x) {
   }
   ctx.translate(0, -lift);
 
-  // Beine (Jeans)
+  // Beine (Jeans) – im Run-Modus mit Laufanimation (runPhase)
+  const rp = p.runPhase;
+  const leg = d => {
+    if (rp === undefined) return [0, 0];
+    const ph = rp + (d < 0 ? 0 : Math.PI);
+    return [Math.sin(ph) * 4.5 * f, Math.min(0, -Math.cos(ph) * 4)];
+  };
+  const legs = [[-6, ...leg(-1)], [6, ...leg(1)]];
   ctx.strokeStyle = OL;
   ctx.lineWidth = 2.2;
   ctx.fillStyle = '#3e6aad';
-  rr(ctx, -10.5, -18, 9, 15, 3); ctx.fill(); ctx.stroke();
-  rr(ctx, 1.5, -18, 9, 15, 3); ctx.fill(); ctx.stroke();
+  for (const [dx, ox, oy] of legs) {
+    rr(ctx, dx - 4.5 + ox, -18, 9, 15 + oy, 3);
+    ctx.fill();
+    ctx.stroke();
+  }
 
   // Schuhe
-  for (const dx of [-6, 6]) {
-    const sx = dx + f * 1.8;
+  for (const [dx, ox, oy] of legs) {
+    ctx.save();
+    ctx.translate(0, oy);
+    const sx = dx + f * 1.8 + ox;
     ctx.fillStyle = lift ? '#ff3b5c' : '#f4f4f4';
     ctx.strokeStyle = OL;
     ctx.lineWidth = 2;
@@ -2278,6 +2296,7 @@ function drawPork(p, x) {
     ctx.fillStyle = '#cfc8cc';
     rr(ctx, sx - 7, -2, 14.5, 2.2, 1.1);
     ctx.fill();
+    ctx.restore();
   }
 
   // Arme in Flanell-Ärmeln
@@ -2285,7 +2304,8 @@ function drawPork(p, x) {
   const onPhone = p.call && p.call.phase !== 'fly';
   const arms = [-1, 1].map(d => {
     if (onPhone && d === f) return [[d * 10, -30], [d * 21, -34], [d * 19, -45]]; // Handy am Ohr
-    return armsUp ? [[d * 10, -30], [d * 18, -48]] : [[d * 10, -30], [d * 18, -18]];
+    const swing = rp === undefined ? 0 : Math.sin(rp + (d < 0 ? Math.PI : 0)) * 5 * f;
+    return armsUp ? [[d * 10, -30], [d * 18, -48]] : [[d * 10, -30], [d * 18 + swing, -18]];
   });
   const armPath = pts => {
     ctx.beginPath();
@@ -2502,9 +2522,9 @@ function drawPlayerWrapped(p) {
   if (p.x > W - 30) drawPork(p, p.x - W);
 }
 
-function drawBackground(t) {
-  // Welt hängt davon ab, wie hoch die Kamera ist; Übergang über 40 m
-  const m = Math.max(0, altAt(camY + H * 0.5));
+function drawBackground(t, mOverride) {
+  // Welt hängt davon ab, wie weit man ist (Classic: Höhe, Run: Strecke); Übergang über 40 m
+  const m = mOverride !== undefined ? mOverride : Math.max(0, altAt(camY + H * 0.5));
   const seg = Math.floor(m / THEME_LEN);
   const i = state === 'menu' ? 0 : themeForSeg(seg);   // Hauptmenü immer am Strand
   const j = state === 'menu' ? 0 : themeForSeg(seg + 1);
@@ -2546,6 +2566,7 @@ function drawBestLine() {
 }
 
 function render() {
+  if (mode === 'run' && state !== 'menu') { runRender(); return; }
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const t = state === 'menu' ? menuT : gameT;
   drawBackground(t);
@@ -2669,7 +2690,8 @@ const el = {
   pause: $('pause'), over: $('over'), settings: $('settings'),
   btnPause: $('btnPause'), left: $('btnLeft'), right: $('btnRight'),
   bestVal: $('bestVal'), overScore: $('overScore'), overBest: $('overBest'),
-  puShoes: $('puShoes'), puBee: $('puBee'), puHeli: $('puHeli')
+  puShoes: $('puShoes'), puBee: $('puBee'), puHeli: $('puHeli'),
+  overExtra: $('overExtra'), modeSelect: $('modeSelect'), runStats: $('runStats')
 };
 const show = (e, on) => e.classList.toggle('hidden', !on);
 
@@ -2680,7 +2702,27 @@ function setPlayUi(on) {
   show(el.right, on);
 }
 
+const CTRL_ICONS = {
+  classic: ['M15 4 L7 12 L15 20', 'M9 4 L17 12 L9 20'],
+  run: ['M4 8 L12 16 L20 8', 'M4 16 L12 8 L20 16']   // links: sliden (runter), rechts: springen (hoch)
+};
+function setMode(m) {
+  mode = m;
+  el.left.querySelector('path').setAttribute('d', CTRL_ICONS[m][0]);
+  el.right.querySelector('path').setAttribute('d', CTRL_ICONS[m][1]);
+  el.left.setAttribute('aria-label', m === 'run' ? 'Sliden' : 'Links');
+  el.right.setAttribute('aria-label', m === 'run' ? 'Springen' : 'Rechts');
+  show(el.runStats, m === 'run');
+  for (const id of ['puShoes', 'puBee', 'puHeli', 'puMagnet', 'puShield', 'puTurbo']) show($(id), false);
+}
+
+function refreshBests() {
+  $('bestClassic').textContent = `Classic ${best} m`;
+  $('bestRun').textContent = `Run ${bestRun} m`;
+}
+
 function startGame() {
+  setMode('classic');
   Sound.stopLoops();
   heliLeave = null;
   flash = 0;
@@ -2705,6 +2747,7 @@ function startGame() {
   show(el.over, false);
   show(el.pause, false);
   show(el.settings, false);
+  show(el.modeSelect, false);
   el.btnPause.classList.remove('active');
   setPlayUi(true);
 }
@@ -2732,14 +2775,20 @@ function gameOver() {
   state = 'over';
   Sound.stopLoops();
   Sound.death();
-  const isRecord = meters > best;
-  if (isRecord) {
+  const isRun = mode === 'run';
+  const isRecord = meters > (isRun ? bestRun : best);
+  if (isRecord && isRun) {
+    bestRun = meters;
+    store.set('porkjump_best_run', bestRun);
+  } else if (isRecord) {
     best = meters;
     store.set('porkjump_best', best);
   }
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
-  el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${best} m`;
+  show(el.overExtra, isRun);
+  if (isRun) el.overExtra.textContent = `${run.truffles} Trüffel`;
+  el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${isRun ? bestRun : best} m`;
   el.overBest.classList.toggle('record', isRecord);
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 450);
 }
@@ -2753,12 +2802,13 @@ function toMenu() {
   show(el.pause, false);
   show(el.over, false);
   show(el.menu, true);
-  el.bestVal.textContent = `${best} m`;
+  refreshBests();
   initDemo();
 }
 
 function updateHud() {
   if (state !== 'playing' && state !== 'paused') return;
+  if (mode === 'run') { runHud(); return; }
   const txt = `${meters} m`;
   if (el.meters.textContent !== txt) el.meters.textContent = txt;
   const pu = (e, v, max) => {
@@ -2785,8 +2835,12 @@ function refreshSoundButtons() {
 function tap(id, fn) {
   $(id).addEventListener('click', e => { e.preventDefault(); Sound.init(); Sound.click(); fn(); });
 }
-tap('btnStart', startGame);
-tap('btnRetry', startGame);
+const retry = () => (mode === 'run' ? startRun() : startGame());
+tap('btnStart', () => show(el.modeSelect, true));
+tap('btnClassic', startGame);
+tap('btnRun', () => startRun());
+tap('btnModeBack', () => show(el.modeSelect, false));
+tap('btnRetry', retry);
 tap('btnOverMenu', toMenu);
 tap('btnToMenu', toMenu);
 tap('btnGear', () => show(el.settings, true));
@@ -2813,6 +2867,7 @@ function holdButton(btn, key) {
   btn.addEventListener('pointerdown', e => {
     e.preventDefault();
     Sound.init();
+    if (key === 'right' && ids.size === 0) input.rightPress++;
     ids.add(e.pointerId);
     try { btn.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
     upd();
@@ -2828,17 +2883,28 @@ holdButton(el.right, 'right');
 
 // Tastatur (für den PC)
 const keyMap = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
+// Run-Modus: zusätzlich Hoch/Leertaste = springen, Runter = sliden
+const runKeyMap = { ArrowUp: 'right', w: 'right', W: 'right', ' ': 'right', ArrowDown: 'left', s: 'left', S: 'left' };
+const keyFor = e => keyMap[e.key] || (mode === 'run' && state === 'playing' ? runKeyMap[e.key] : undefined);
 window.addEventListener('keydown', e => {
-  if (keyMap[e.key]) { input[keyMap[e.key]] = true; e.preventDefault(); }
+  const k = keyFor(e);
+  if (k) {
+    if (k === 'right' && !e.repeat && !input.right) input.rightPress++;
+    input[k] = true;
+    e.preventDefault();
+  }
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
     if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame();
   }
   if ((e.key === 'Enter' || e.key === ' ') && (state === 'menu' || state === 'over')) {
     Sound.init();
-    startGame();
+    retry();
   }
 });
-window.addEventListener('keyup', e => { if (keyMap[e.key]) input[keyMap[e.key]] = false; });
+window.addEventListener('keyup', e => {
+  const k = keyMap[e.key] || runKeyMap[e.key];
+  if (k) input[k] = false;
+});
 
 // App in den Hintergrund -> automatisch Pause
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
@@ -2857,7 +2923,7 @@ function frame(ts) {
   if (state === 'playing') {
     acc += dt;
     while (acc >= STEP) {
-      update(STEP);
+      if (mode === 'run') runUpdate(STEP); else update(STEP);
       acc -= STEP;
       if (state !== 'playing') { acc = 0; break; }
     }
@@ -2871,7 +2937,7 @@ function frame(ts) {
 }
 
 resize();
-el.bestVal.textContent = `${best} m`;
+refreshBests();
 $('version').textContent = `Version ${VERSION}`;
 refreshSoundButtons();
 initDemo();

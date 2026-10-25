@@ -178,9 +178,13 @@ button {
 }
 #trophy svg { width: 72px; height: 72px; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.3)); }
 #bestVal {
-  font-size: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 22px;
+  line-height: 1.15;
   margin-top: 2px;
-  padding: 4px 16px 0;
+  padding: 5px 16px 1px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.3);
   text-shadow: 2px 2px 0 #3b1d2a;
@@ -237,3 +241,47 @@ button {
 }
 .btn:active { box-shadow: 0 1px 0 #3b1d2a; transform: translateY(3px); }
 .btn.off { background: #c9c3cf; }
+
+/* ---------- Run-Modus ---------- */
+#runStats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+#runStats.hidden { display: none !important; }
+#hearts { display: flex; gap: 3px; }
+#hearts svg { width: 24px; height: 22px; filter: drop-shadow(1px 1px 0 #3b1d2a); }
+#truffleCount {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 20px;
+  padding: 3px 10px 0 6px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.32);
+  text-shadow: 2px 2px 0 #3b1d2a;
+}
+.truffle-ico {
+  width: 16px;
+  height: 14px;
+  border-radius: 50% 55% 45% 50%;
+  background: radial-gradient(circle at 35% 35%, #9a6a40, #4a2c18 70%);
+  box-shadow: 0 0 0 2px #2a1810, 0 0 6px rgba(255, 210, 120, 0.7);
+}
+#puMagnet .bar i { background: #ff4d4d; }
+#puShield .bar i { background: #6ee7ff; }
+#puTurbo .bar i { background: linear-gradient(90deg, #ffd23f, #ff7a1a); }
+
+/* Modus-Auswahl */
+.btn.mode { font-size: 28px; padding: 12px 10px 10px; }
+.btn.mode small {
+  display: block;
+  margin-top: 2px;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+#btnRun { background: #6ee7ff; }
+.btn.ghost { background: #fff4f7; font-size: 18px; padding: 8px 10px 5px; }
