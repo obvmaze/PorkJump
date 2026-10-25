@@ -1897,10 +1897,11 @@ function drawBee(x, y, s, facing) {
   ctx.restore();
 }
 
-// John Pork: Schweinekopf auf Menschenkörper, Comic-Style mit Schattierung
+// John Pork: glatter rosa Schweinekopf, graues Shirt, offenes rot kariertes Flanellhemd
 function drawPork(p, x) {
   const OL = '#3b1d2a';
-  const SKIN = '#f5a9bb';
+  const SKIN = '#f2c3c8';
+  const FLANNEL = '#a3243a';
   const f = p.facing;
   const armsUp = p.bee > 0 || p.vy < -250;
   ctx.save();
@@ -1931,32 +1932,19 @@ function drawPork(p, x) {
   }
   ctx.translate(0, -lift);
 
-  // Beine (Jeans mit Naht und Umschlag)
-  const jeans = ctx.createLinearGradient(-11, 0, 11, 0);
-  jeans.addColorStop(0, '#2c5596');
-  jeans.addColorStop(0.5, '#4a7cc7');
-  jeans.addColorStop(1, '#264a85');
+  // Beine (Jeans)
   ctx.strokeStyle = OL;
   ctx.lineWidth = 2.2;
-  ctx.fillStyle = jeans;
+  ctx.fillStyle = '#3e6aad';
   rr(ctx, -10.5, -18, 9, 15, 3); ctx.fill(); ctx.stroke();
   rr(ctx, 1.5, -18, 9, 15, 3); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#6a97dc';
-  ctx.fillRect(-9.5, -7, 7, 2);
-  ctx.fillRect(2.5, -7, 7, 2);
-  ctx.strokeStyle = 'rgba(255,214,140,0.65)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(-3.5, -16); ctx.lineTo(-3.5, -8);
-  ctx.moveTo(3.5, -16); ctx.lineTo(3.5, -8);
-  ctx.stroke();
 
-  // Sneaker
+  // Schuhe
   for (const dx of [-6, 6]) {
     const sx = dx + f * 1.8;
+    ctx.fillStyle = lift ? '#ff3b5c' : '#f4f4f4';
     ctx.strokeStyle = OL;
     ctx.lineWidth = 2;
-    ctx.fillStyle = lift ? '#ff3b5c' : '#ffffff';
     ctx.beginPath();
     ctx.moveTo(sx - 6.5 * f, -1);
     ctx.lineTo(sx - 6.5 * f, -5.5);
@@ -1965,236 +1953,166 @@ function drawPork(p, x) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#d8d0d4';
-    rr(ctx, sx - 7, -2, 14.5, 2.4, 1.2);
+    ctx.fillStyle = '#cfc8cc';
+    rr(ctx, sx - 7, -2, 14.5, 2.2, 1.1);
     ctx.fill();
-    ctx.strokeStyle = lift ? '#ffffff' : '#e63946';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(sx - 4 * f, -3.2);
-    ctx.quadraticCurveTo(sx + 1 * f, -2.5, sx + 4.5 * f, -5);
-    ctx.stroke();
-    ctx.strokeStyle = '#9a8f95';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(sx - 1 * f, -6.8); ctx.lineTo(sx + 1 * f, -5.8);
-    ctx.moveTo(sx + 1 * f, -6.6); ctx.lineTo(sx + 3 * f, -5.6);
-    ctx.stroke();
   }
 
-  // Gürtel
-  ctx.fillStyle = '#4a2c1d';
-  ctx.fillRect(-11.5, -19.5, 23, 3.5);
-  ctx.fillStyle = '#e0bb4f';
-  ctx.fillRect(-2, -19.8, 4, 4);
-
-  // Arme mit kurzen Ärmeln und Händen
+  // Arme in Flanell-Ärmeln
   const arms = armsUp
     ? [[-10, -30, -18, -48], [10, -30, 18, -48]]
     : [[-10, -30, -18, -18], [10, -30, 18, -18]];
   for (const [ax, ay, bx, by] of arms) {
     ctx.strokeStyle = OL;
-    ctx.lineWidth = 7.5;
+    ctx.lineWidth = 8.5;
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    ctx.strokeStyle = SKIN;
-    ctx.lineWidth = 4.6;
+    ctx.strokeStyle = FLANNEL;
+    ctx.lineWidth = 5.5;
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    const mx = lerp(ax, bx, 0.38), my = lerp(ay, by, 0.38);
-    ctx.strokeStyle = OL;
-    ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.stroke();
-    ctx.strokeStyle = '#f4f1f5';
-    ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.stroke();
     ctx.fillStyle = SKIN;
     ctx.strokeStyle = OL;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.arc(bx, by, 3.6, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#e48aa3';
-    circle(ctx, bx + (bx < 0 ? 1.4 : -1.4), by - 1, 1.2);
   }
 
-  // T-Shirt mit Schatten, Falten und Kragen
-  const shirt = ctx.createLinearGradient(-13, 0, 13, 0);
-  shirt.addColorStop(0, '#dcd4de');
-  shirt.addColorStop(0.45, '#ffffff');
-  shirt.addColorStop(1, '#d4cbd7');
-  ctx.fillStyle = shirt;
-  ctx.strokeStyle = OL;
-  ctx.lineWidth = 2.4;
+  // Oberkörper: graues Shirt in der Mitte, offenes Karohemd außen
+  const torso = () => {
+    ctx.beginPath();
+    ctx.moveTo(-11.5, -17);
+    ctx.lineTo(-13, -31);
+    ctx.quadraticCurveTo(-12.5, -36, -6, -36.5);
+    ctx.lineTo(6, -36.5);
+    ctx.quadraticCurveTo(12.5, -36, 13, -31);
+    ctx.lineTo(11.5, -17);
+    ctx.closePath();
+  };
+  torso();
+  ctx.fillStyle = FLANNEL;
+  ctx.fill();
+  ctx.save();
+  torso();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(60,8,20,0.45)';
+  for (let k = -14; k < 14; k += 6) ctx.fillRect(k, -38, 2.5, 22);
+  for (let k = -36; k < -16; k += 6) ctx.fillRect(-14, k, 28, 2.5);
+  ctx.fillStyle = 'rgba(255,190,190,0.25)';
+  for (let k = -12; k < 14; k += 6) ctx.fillRect(k, -38, 0.8, 22);
+  // graues Shirt
+  ctx.fillStyle = '#8e9299';
   ctx.beginPath();
-  ctx.moveTo(-11.5, -17);
-  ctx.lineTo(-13, -31);
-  ctx.quadraticCurveTo(-12.5, -36, -6, -36.5);
-  ctx.lineTo(6, -36.5);
-  ctx.quadraticCurveTo(12.5, -36, 13, -31);
-  ctx.lineTo(11.5, -17);
+  ctx.moveTo(-5, -36.5);
+  ctx.lineTo(-4.5, -17);
+  ctx.lineTo(4.5, -17);
+  ctx.lineTo(5, -36.5);
   ctx.closePath();
   ctx.fill();
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(110,90,115,0.4)';
-  ctx.lineWidth = 1;
+  ctx.restore();
+  ctx.strokeStyle = OL;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(-8, -20); ctx.lineTo(-4, -25);
-  ctx.moveTo(8, -21); ctx.lineTo(5, -26);
-  ctx.moveTo(-9, -32); ctx.lineTo(-7, -28);
+  ctx.moveTo(-5, -36); ctx.lineTo(-4.5, -17.5);
+  ctx.moveTo(5, -36); ctx.lineTo(4.5, -17.5);
   ctx.stroke();
-
-  // Hals
-  ctx.fillStyle = '#e795aa';
-  rr(ctx, -5, -39, 10, 5, 2);
-  ctx.fill();
-  ctx.strokeStyle = '#cfc6d2';
+  ctx.lineWidth = 2.4;
+  torso();
+  ctx.stroke();
+  // Hemdkragen
+  ctx.fillStyle = '#8a1c30';
   ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.arc(0, -36.5, 5.5, 0.15, Math.PI - 0.15);
-  ctx.stroke();
+  for (const d of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(d * 4, -37);
+    ctx.lineTo(d * 10, -36);
+    ctx.lineTo(d * 5.5, -31);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 
-  // Ohren
-  const ear = (ex, dir) => {
-    const eg = ctx.createLinearGradient(ex, -72, ex, -52);
-    eg.addColorStop(0, '#f29bb1');
-    eg.addColorStop(1, '#f7b6c6');
-    ctx.fillStyle = eg;
+  // Schlappohren (stehen seitlich ab)
+  for (const d of [-1, 1]) {
+    ctx.fillStyle = '#e3a9b1';
     ctx.strokeStyle = OL;
     ctx.lineWidth = 2.3;
     ctx.beginPath();
-    ctx.moveTo(ex - 7 * dir, -57);
-    ctx.quadraticCurveTo(ex - 1 * dir, -70, ex + 6 * dir, -72);
-    ctx.quadraticCurveTo(ex + 9 * dir, -62, ex + 8 * dir, -53);
+    ctx.moveTo(d * 10, -63);
+    ctx.quadraticCurveTo(d * 24, -66, d * 24, -54);
+    ctx.quadraticCurveTo(d * 23, -48, d * 18, -50);
+    ctx.quadraticCurveTo(d * 16, -56, d * 14, -58);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#d9718e';
+    ctx.fillStyle = '#c98892';
     ctx.beginPath();
-    ctx.moveTo(ex - 2.5 * dir, -57);
-    ctx.quadraticCurveTo(ex + 1 * dir, -65, ex + 5 * dir, -67);
-    ctx.quadraticCurveTo(ex + 6.5 * dir, -61, ex + 6 * dir, -56);
+    ctx.moveTo(d * 13, -61.5);
+    ctx.quadraticCurveTo(d * 21.5, -63, d * 21.5, -55);
+    ctx.quadraticCurveTo(d * 19, -55, d * 15.5, -58.5);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(150,50,80,0.5)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(ex + 1 * dir, -58);
-    ctx.lineTo(ex + 4 * dir, -64);
-    ctx.stroke();
-  };
-  ear(-11, -1);
-  ear(11, 1);
+  }
 
-  // Kopf (mit Backen-Rundung unten) und Schattierung
-  const hg = ctx.createRadialGradient(-5 + f * 4, -57, 2, f * 2, -48, 24);
-  hg.addColorStop(0, '#ffd8e1');
-  hg.addColorStop(0.55, '#f7afc0');
-  hg.addColorStop(1, '#df849d');
+  // Kopf: glatt und rund, leicht breitere Backen
+  const hg = ctx.createRadialGradient(-4 + f * 3, -57, 2, f * 2, -48, 23);
+  hg.addColorStop(0, '#fde6e8');
+  hg.addColorStop(0.6, SKIN);
+  hg.addColorStop(1, '#e2a3ad');
   ctx.fillStyle = hg;
   ctx.strokeStyle = OL;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(0, -65.5);
-  ctx.bezierCurveTo(13, -65.5, 19, -57, 19, -49);
-  ctx.bezierCurveTo(19.5, -38, 12, -32, 0, -32);
-  ctx.bezierCurveTo(-12, -32, -19.5, -38, -19, -49);
-  ctx.bezierCurveTo(-19, -57, -13, -65.5, 0, -65.5);
+  ctx.moveTo(0, -66);
+  ctx.bezierCurveTo(12, -66, 18, -58, 18, -50);
+  ctx.bezierCurveTo(18.5, -38, 11, -32, 0, -32);
+  ctx.bezierCurveTo(-11, -32, -18.5, -38, -18, -50);
+  ctx.bezierCurveTo(-18, -58, -12, -66, 0, -66);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  // Borstenhaare
-  ctx.strokeStyle = '#c96f8a';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-3, -65); ctx.quadraticCurveTo(-4, -69, -1, -70);
-  ctx.moveTo(0.5, -65.5); ctx.quadraticCurveTo(1, -70, 4, -70.5);
-  ctx.moveTo(3.5, -65); ctx.quadraticCurveTo(5, -68, 7.5, -68);
-  ctx.stroke();
-  // Bäckchen
-  ctx.fillStyle = 'rgba(240,110,145,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(-12 + f * 3, -41, 4.5, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(12 + f * 3, -41, 4.5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
 
-  // Augen: Iris, Pupille, Glanzpunkt, halb geschlossene Lider (cooler John-Pork-Blick)
-  for (const ex of [-6.2, 5.2]) {
-    const cx = ex + f * 3, cy = -52;
-    ctx.save();
+  // Augen: klein, dunkel, ruhig
+  for (const ex of [-6.5, 6.5]) {
+    const cx = ex + f * 2.5, cy = -54;
+    ctx.fillStyle = '#2a1a20';
     ctx.beginPath();
-    ctx.ellipse(cx, cy, 4.4, 5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#fffafb';
+    ctx.ellipse(cx, cy, 2.3, 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.clip();
-    ctx.fillStyle = '#5b3a29';
-    circle(ctx, cx + f * 1.3, cy + 0.8, 2.8);
-    ctx.fillStyle = '#140a0f';
-    circle(ctx, cx + f * 1.3, cy + 0.8, 1.5);
-    ctx.fillStyle = '#ffffff';
-    circle(ctx, cx + f * 1.3 - 0.9, cy - 0.3, 0.8);
-    ctx.fillStyle = '#eea1b4';
-    ctx.fillRect(cx - 5, cy - 6, 10, 4.2);
-    ctx.restore();
-    ctx.strokeStyle = OL;
-    ctx.lineWidth = 1.6;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    circle(ctx, cx - 0.7, cy - 0.6, 0.6);
+    ctx.strokeStyle = 'rgba(120,60,75,0.7)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, 4.4, 5, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(cx - 4.4, cy - 1.8);
-    ctx.quadraticCurveTo(cx, cy - 3, cx + 4.4, cy - 1.8);
+    ctx.moveTo(cx - 3.2, cy - 2);
+    ctx.quadraticCurveTo(cx, cy - 3.6, cx + 3.2, cy - 2);
     ctx.stroke();
   }
-  // Augenbrauen
-  ctx.strokeStyle = '#7a3350';
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.moveTo(-10.5 + f * 3, -59.5); ctx.quadraticCurveTo(-6.5 + f * 3, -61, -2.5 + f * 3, -59);
-  ctx.moveTo(1.5 + f * 3, -59); ctx.quadraticCurveTo(5.5 + f * 3, -61.5, 9.5 + f * 3, -60.5);
-  ctx.stroke();
-  // Falten über dem Rüssel
-  ctx.strokeStyle = 'rgba(160,60,95,0.5)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(f * 7 - 4, -49.5); ctx.quadraticCurveTo(f * 7, -50.5, f * 7 + 4, -49.5);
-  ctx.moveTo(f * 7 - 3, -51.5); ctx.quadraticCurveTo(f * 7, -52.3, f * 7 + 3, -51.5);
-  ctx.stroke();
 
-  // Rüssel mit Glanz und tiefen Nasenlöchern
-  const sx = f * 7.5, sy = -43;
-  const sg = ctx.createRadialGradient(sx - 2, sy - 2.5, 1, sx, sy, 9);
-  sg.addColorStop(0, '#ffc2d1');
-  sg.addColorStop(1, '#e97a97');
+  // Rüssel: groß und rund
+  const sx = f * 3.5, sy = -45.5;
+  const sg = ctx.createRadialGradient(sx - 2, sy - 3, 1, sx, sy, 10);
+  sg.addColorStop(0, '#fbd9dd');
+  sg.addColorStop(1, '#e8a7b1');
   ctx.fillStyle = sg;
   ctx.strokeStyle = OL;
-  ctx.lineWidth = 2.3;
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.ellipse(sx, sy, 8.5, 6.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy, 9.5, 6.3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#5e1c33';
+  ctx.fillStyle = '#4a2630';
   ctx.beginPath();
-  ctx.ellipse(sx - 3.1, sy + 0.3, 1.6, 2.6, -0.15, 0, Math.PI * 2);
-  ctx.ellipse(sx + 3.1, sy + 0.3, 1.6, 2.6, 0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.beginPath();
-  ctx.ellipse(sx - 3, sy - 3.6, 2.6, 1.1, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(sx - 3.4, sy + 0.4, 1.5, 2.3, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(sx + 3.4, sy + 0.4, 1.5, 2.3, 0.15, 0, Math.PI * 2);
   ctx.fill();
 
-  // Mund mit leichtem Grinsen + Kinn
+  // Breites, entspanntes Grinsen
   ctx.strokeStyle = OL;
   ctx.lineWidth = 1.7;
   ctx.beginPath();
-  ctx.moveTo(f * 1.5, -35.8);
-  ctx.quadraticCurveTo(f * 6, -33.6, f * 11, -36.6);
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(160,60,95,0.45)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(f * 4, -33.2);
-  ctx.quadraticCurveTo(f * 6, -32.6, f * 8, -33.2);
+  ctx.moveTo(f * 3.5 - 9, -37);
+  ctx.quadraticCurveTo(f * 3.5, -33.2, f * 3.5 + 9, -37);
   ctx.stroke();
   ctx.restore();
 
