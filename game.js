@@ -1145,7 +1145,7 @@ const LABWORLD = {
   }
 };
 
-// Reihenfolge der ersten Runde: Strand, Wald, Schnee, Tempel, Canyon, Grotte, Zucker, Labor, Wolken, Polarlicht, Weltall
+// Strand bleibt Index 0 (Hauptmenü-Hintergrund), die neuen Welten werden einsortiert
 THEMES.splice(3, 0, TEMPLE);
 THEMES.splice(5, 0, GROTTO);
 THEMES.splice(7, 0, LABWORLD);
@@ -1499,16 +1499,12 @@ function newPlayer(x, y) {
 
 const altAt = y => (startY - y) / PX_PER_M;            // Welt-Y -> Meter
 
-// Reihenfolge der Welten: erste Runde fest, danach jede Runde neu gemischt
-// (alle Welten kommen dran, aber in anderer Reihenfolge als davor)
+// Reihenfolge der Welten: jede Runde (auch die erste) zufällig gemischt.
+// Alle Welten kommen dran, nie zweimal hintereinander dieselbe.
 let themeSeq = [];
 function themeForSeg(seg) {
   const n = THEMES.length;
   while (themeSeq.length <= seg + 1) {
-    if (themeSeq.length === 0) {
-      for (let i = 0; i < n; i++) themeSeq.push(i);
-      continue;
-    }
     const prev = themeSeq.slice(-n);
     let order;
     do {
@@ -2139,8 +2135,8 @@ function drawBackground(t) {
   // Welt hängt davon ab, wie hoch die Kamera ist; Übergang über 40 m
   const m = Math.max(0, altAt(camY + H * 0.5));
   const seg = Math.floor(m / THEME_LEN);
-  const i = themeForSeg(seg);
-  const j = themeForSeg(seg + 1);
+  const i = state === 'menu' ? 0 : themeForSeg(seg);   // Hauptmenü immer am Strand
+  const j = state === 'menu' ? 0 : themeForSeg(seg + 1);
   const frac = (m % THEME_LEN) - (THEME_LEN - 40);
   ctx.drawImage(getBg(i), 0, 0, W, H);
   drawAmbient(THEMES[i].amb, t, camY);
@@ -2267,9 +2263,9 @@ function startGame() {
   meters = 0;
   itemCooldown = 3;
   startY = H - 70;
-  platforms.push({ x: W / 2 - 70, y: startY, w: 140, h: 14, vx: 0, theme: 0, item: null });
-  topY = startY;
   themeSeq = [];
+  platforms.push({ x: W / 2 - 70, y: startY, w: 140, h: 14, vx: 0, theme: themeAt(0), item: null });
+  topY = startY;
   genPlatforms();
   player = newPlayer(W / 2, startY);
   player.vy = -JUMP_V;
