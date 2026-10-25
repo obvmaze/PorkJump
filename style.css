@@ -285,3 +285,21 @@ button {
 }
 #btnRun { background: #6ee7ff; }
 .btn.ghost { background: #fff4f7; font-size: 18px; padding: 8px 10px 5px; }
+
+/* Trüffel-Konto im Hauptmenü (oben links) */
+#wallet {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 54px;
+  padding: 4px 18px 0 14px;
+  border-radius: 27px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 26px;
+  text-shadow: 2px 2px 0 #3b1d2a;
+  z-index: 30;
+}
+#wallet .truffle-ico { width: 24px; height: 21px; margin-top: -4px; }

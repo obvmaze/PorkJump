@@ -1386,6 +1386,7 @@ const store = {
 };
 let best = store.get('porkjump_best', 0);
 let bestRun = store.get('porkjump_best_run', 0);
+let truffleBank = store.get('porkjump_truffles', 0);   // Trüffel-Währung über alle Runden
 let soundOn = store.get('porkjump_sound', true);
 
 /* =========================================================
@@ -2706,7 +2707,18 @@ function setMode(m) {
   for (const id of ['puShoes', 'puBee', 'puHeli', 'puMagnet', 'puShield', 'puTurbo']) show($(id), false);
 }
 
+// Gesammelte Trüffel des laufenden Runs aufs Konto buchen (nur was noch nicht gebucht ist)
+function bankTruffles() {
+  if (mode !== 'run' || !run) return;
+  const add = run.truffles - (run.banked || 0);
+  if (add <= 0) return;
+  run.banked = run.truffles;
+  truffleBank += add;
+  store.set('porkjump_truffles', truffleBank);
+}
+
 function refreshBests() {
+  $('walletVal').textContent = truffleBank;
   $('bestClassic').textContent = `Classic ${best} m`;
   $('bestRun').textContent = `Run ${bestRun} m`;
 }
@@ -2766,6 +2778,7 @@ function gameOver() {
   Sound.stopLoops();
   Sound.death();
   const isRun = mode === 'run';
+  bankTruffles();
   const isRecord = meters > (isRun ? bestRun : best);
   if (isRecord && isRun) {
     bestRun = meters;
@@ -2777,13 +2790,14 @@ function gameOver() {
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
   show(el.overExtra, isRun);
-  if (isRun) el.overExtra.textContent = `${run.truffles} Trüffel`;
+  if (isRun) el.overExtra.textContent = `+${run.truffles} Trüffel (gesamt ${truffleBank})`;
   el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${isRun ? bestRun : best} m`;
   el.overBest.classList.toggle('record', isRecord);
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 450);
 }
 
 function toMenu() {
+  bankTruffles();
   Sound.stopLoops();
   heliLeave = null;
   flash = 0;
@@ -2897,7 +2911,8 @@ window.addEventListener('keyup', e => {
 });
 
 // App in den Hintergrund -> automatisch Pause
-document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); bankTruffles(); } });
+window.addEventListener('pagehide', bankTruffles);
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
 window.addEventListener('resize', resize);
