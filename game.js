@@ -257,7 +257,7 @@ function stars(g, w, h, n, seed, maxY) {
    ========================================================= */
 const THEMES = [
   {
-    name: 'Sonnenaufgang-Strand', amb: 'beach',
+    name: 'Strand bei Sonnenaufgang', amb: 'beach',
     plat: { base: '#c07a3f', top: '#f6d48e', line: '#5e3517' },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h * 0.72, ['#3b1e6e', '#a83f8a', '#ff7a6b', '#ffb36b', '#ffe2a8']);
@@ -302,7 +302,7 @@ const THEMES = [
     }
   },
   {
-    name: 'Verwunschener Wald', amb: 'forest',
+    name: 'Zauberwald', amb: 'forest',
     plat: { base: '#6b4a2b', top: '#62d36f', line: '#24160b' },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h, ['#140a33', '#2e1a66', '#3b5e8c', '#3fa38a']);
@@ -334,7 +334,7 @@ const THEMES = [
     }
   },
   {
-    name: 'Schneeberge', amb: 'snow',
+    name: 'Verschneite Berge', amb: 'snow',
     plat: { base: '#7fb3e0', top: '#ffffff', line: '#2d4f73' },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h, ['#3d8fe8', '#8fd0ff', '#e6f7ff']);
@@ -353,7 +353,7 @@ const THEMES = [
     }
   },
   {
-    name: 'Canyon im Abendrot', amb: 'desert',
+    name: 'Canyon bei Sonnenuntergang', amb: 'desert',
     plat: { base: '#b5552f', top: '#f0a35c', line: '#5a2414' },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h * 0.75, ['#2d1b4e', '#8e2f6b', '#e8505b', '#ff9f43', '#ffd08a']);
@@ -395,7 +395,7 @@ const THEMES = [
     }
   },
   {
-    name: 'Zuckerland', amb: 'candy',
+    name: 'Land der Süßigkeiten', amb: 'candy',
     plat: { base: '#ff6fae', top: '#fff3fb', line: '#8a1f55', sprinkles: true },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h, ['#ff9ad5', '#ffc6e8', '#c9b6ff', '#9fe3ff']);
@@ -507,7 +507,7 @@ const THEMES = [
     }
   },
   {
-    name: 'Polarlicht-Nacht', amb: 'aurora',
+    name: 'Polarlichter bei Nacht', amb: 'aurora',
     plat: { base: '#3b5f8a', top: '#c9f3ff', line: '#132a46' },
     draw(g, w, h) {
       g.fillStyle = vgrad(g, 0, h, ['#01011a', '#071a3d', '#0d3b5c', '#1b5a6e']);
@@ -798,7 +798,7 @@ function dragon(g, w, h) {
 }
 
 const TEMPLE = {
-  name: 'Drachentempel', amb: 'fireworks',
+  name: 'Chinesisches Neujahr', amb: 'fireworks',
   plat: { base: '#b3122e', top: '#f2c14e', line: '#3d0610', ornate: true },
   draw(g, w, h) {
     g.fillStyle = vgrad(g, 0, h, ['#1a0b2e', '#4a1240', '#a3283c', '#f07a3a', '#ffc36b']);

@@ -14,14 +14,14 @@
 
 ### Neue Welten
 3 neue Welten, damit sind es jetzt **11**:
-- **Drachentempel:** Pagoden, rote Laternen, ein goldener Drache am Himmel und Feuerwerk
+- **Chinesisches Neujahr:** Pagoden, rote Laternen, ein goldener Drache am Himmel und Feuerwerk
 - **Dunkle Grotte:** Tropfsteine, kaputte und überwucherte Steinsäulen, Ranken, Leuchtkristalle, Wasserpfützen mit Tropfen
 - **Giftlabor:** Schläuche mit giftgrüner Masse, ein blubbernder Tank, Kolben, Bunsenbrenner, Reagenzgläser. Die Plattformen tropfen.
 
-Alle Welten im Überblick: Sonnenaufgang-Strand, Verwunschener Wald, Schneeberge, **Drachentempel**, Canyon im Abendrot, **Dunkle Grotte**, Zuckerland, **Giftlabor**, Wolkenkönigreich, Polarlicht-Nacht, Weltall
+Alle Welten im Überblick: Strand bei Sonnenaufgang, Zauberwald, Verschneite Berge, **Chinesisches Neujahr**, Canyon bei Sonnenuntergang, **Dunkle Grotte**, Land der Süßigkeiten, **Giftlabor**, Wolkenkönigreich, Polarlichter bei Nacht, Weltall
 
 ### Bugfix
-- Bei der Überblendung zwischen zwei Welten blitzte im Zuckerland die bewegte Deko kurz voll auf.
+- Bei der Überblendung zwischen zwei Welten blitzte im Land der Süßigkeiten die bewegte Deko kurz voll auf.
 
 ## Version 1.0
 - Erste spielbare Version: endlose Plattformen, 8 Welten, Trampolin, Federschuhe und Biene, Pause- und Einstellungsmenü, Meteranzeige, lokaler Rekord
