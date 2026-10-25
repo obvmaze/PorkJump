@@ -23,6 +23,8 @@ const SHOE_MUL = Math.SQRT2;   // Federschuhe: doppelte Sprunghöhe
 const SHOE_TIME = 15;
 const BEE_TIME = 3;
 const BEE_V = 700;             // Biene trägt einen mit diesem Tempo hoch
+const CALL_DIST = 5 * BEE_V * BEE_TIME; // Handy-Heli: 5x so weit wie die Biene (420 m)
+const CALL_SPEED = 2800;       // Höchsttempo am Heli-Seil
 const STEP = 1 / 120;          // feste Physik-Schrittweite
 
 // ---------- Canvas & Größe ----------
@@ -1427,6 +1429,96 @@ const Sound = {
   expire() { this.tone(600, 200, 0.25, 'triangle', 0.1); },
   death() { this.tone(520, 70, 0.9, 'sawtooth', 0.09); },
   click() { this.tone(900, 700, 0.05, 'square', 0.04); },
+  noiseBuf: null,
+  heliNodes: null,
+  noise() {
+    if (!this.noiseBuf) {
+      const len = this.ac.sampleRate;
+      this.noiseBuf = this.ac.createBuffer(1, len, this.ac.sampleRate);
+      const d = this.noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = this.ac.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    return src;
+  },
+  // Handy wählt (Tastentöne), dann Freizeichen
+  dial() {
+    if (!soundOn || !this.ac) return;
+    const rows = [697, 770, 852, 941], cols = [1209, 1336, 1477];
+    for (let i = 0; i < 7; i++) {
+      const d = i * 0.13;
+      const r = rows[Math.floor(Math.random() * 4)], c = cols[Math.floor(Math.random() * 3)];
+      this.tone(r, r, 0.09, 'sine', 0.06, d);
+      this.tone(c, c, 0.09, 'sine', 0.06, d);
+    }
+    for (const d of [1.05, 1.95]) {
+      this.tone(440, 440, 0.7, 'sine', 0.06, d);
+      this.tone(480, 480, 0.7, 'sine', 0.06, d);
+    }
+  },
+  whoosh() {
+    if (!soundOn || !this.ac) return;
+    const t = this.ac.currentTime;
+    const src = this.noise();
+    const bp = this.ac.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(300, t);
+    bp.frequency.exponentialRampToValueAtTime(3000, t + 0.5);
+    const g = this.ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    src.connect(bp).connect(g).connect(this.ac.destination);
+    src.start(t);
+    src.stop(t + 0.65);
+  },
+  // Rotor-Knattern: gefiltertes Rauschen + tiefes Wummern, im Rotortakt gepulst
+  startHeli() {
+    if (!soundOn || !this.ac || this.heliNodes) return;
+    const ac = this.ac, t = ac.currentTime;
+    const src = this.noise();
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    const thump = ac.createOscillator();
+    thump.type = 'sine';
+    thump.frequency.value = 55;
+    const chop = ac.createGain();
+    chop.gain.value = 0.5;
+    const lfo = ac.createOscillator(), lfoG = ac.createGain();
+    lfo.type = 'square';
+    lfo.frequency.value = 13;
+    lfoG.gain.value = 0.5;
+    lfo.connect(lfoG).connect(chop.gain);
+    const tg = ac.createGain();
+    tg.gain.value = 0.6;
+    const out = ac.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.22, t + 0.6);
+    src.connect(lp).connect(chop);
+    thump.connect(tg).connect(chop);
+    chop.connect(out).connect(ac.destination);
+    const nodes = [src, thump, lfo];
+    nodes.forEach(n => n.start(t));
+    this.heliNodes = { nodes, out };
+  },
+  stopHeli() {
+    if (!this.heliNodes) return;
+    const { nodes, out } = this.heliNodes;
+    const t = this.ac.currentTime;
+    out.gain.cancelScheduledValues(t);
+    out.gain.setValueAtTime(Math.max(out.gain.value, 0.0001), t);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    nodes.forEach(n => { try { n.stop(t + 0.55); } catch (e) { /* schon gestoppt */ } });
+    this.heliNodes = null;
+  },
+  stopLoops() {
+    this.stopBuzz();
+    this.stopHeli();
+  },
   // Tiefes, weiches Bienen-Summen: zwei tiefe Töne, gefiltert, mit Flügelschlag-Pulsieren
   startBuzz() {
     if (!soundOn || !this.ac || this.buzzNodes) return;
@@ -1548,6 +1640,7 @@ function addPlatform(x, y, w, d, allowItem) {
     if (r < 0.0385) type = 'tramp';
     else if (r < 0.056) type = 'shoes';
     else if (r < 0.0665) type = 'bee';
+    else if (r < 0.0715 && altAt(y) > 60) type = 'phone';
     if (type) {
       p.item = { type, ox: type === 'tramp' ? rand(18, w - 18) : w / 2, squish: 0 };
       itemCooldown = 4;
@@ -1679,6 +1772,9 @@ function checkPickups(p) {
         p.shoeJumps = 0;
         p.nextFlip = randInt(2, 5);
         popup(ix, iy - 30, 'Federschuhe!', '#6ee7ff');
+      } else if (it.type === 'phone') {
+        startCall(p);
+        return;
       } else {
         p.bee = BEE_TIME;
         p.spin = 0; p.spinV = 0;
@@ -1712,9 +1808,108 @@ function updateFx(dt) {
   popups = popups.filter(q => q.life > 0);
 }
 
+/* ---------- Handy-Anruf: Einfrieren -> Wählen -> Heli -> Seil -> Abflug ---------- */
+// Phasen: 'dial' (alles steht, Pork telefoniert), 'heli' (Heli kommt, Seil runter),
+// 'fly' (am Seil nach oben), danach fliegt der Heli alleine weg (heliLeave)
+let heliLeave = null;
+let flash = 0;
+
+function startCall(p) {
+  p.bee = 0;
+  p.spin = 0;
+  p.spinV = 0;
+  p.vx = 0;
+  p.vy = 0;
+  Sound.stopBuzz();
+  Sound.dial();
+  p.call = { phase: 'dial', t: 0, hx: W + 120, hy: camY + 115, rope: 0, dist: 0, nextFlash: 0 };
+}
+
+function heliHook(p) {
+  return p.call.hy + 22; // Seil hängt unten am Heli
+}
+
+function updateCall(p, dt) {
+  const c = p.call;
+  c.t += dt;
+  if (c.phase === 'dial') {
+    if (c.t > 2.6) {
+      c.phase = 'heli';
+      c.t = 0;
+      Sound.startHeli();
+    }
+  } else if (c.phase === 'heli') {
+    const k = Math.min(1, c.t / 1.2);
+    const e = 1 - (1 - k) * (1 - k);
+    c.hx = lerp(W + 120, p.x + 6, e);
+    c.hy = camY + 115 + Math.sin(gameT * 3) * 3;
+    const full = p.y - 50 - heliHook(p);
+    c.rope = full * clamp((c.t - 1.2) / 0.55, 0, 1);
+    if (c.t > 1.85) {
+      c.phase = 'fly';
+      c.t = 0;
+      c.rope = full;
+      flash = 1;
+      Sound.whoosh();
+      sparkle(p.x, p.y - 50);
+      popup(p.x, p.y - 90, 'JOHN PORK EXPRESS!', '#ff5fa2');
+    }
+  } else if (c.phase === 'fly') {
+    const v = Math.min(CALL_SPEED, 500 + c.t * 3500);
+    const step = Math.min(v * dt, CALL_DIST - c.dist);
+    p.y -= step;
+    c.dist += step;
+    const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    if (dir) p.facing = dir;
+    p.x = wrapMod(p.x + dir * 260 * dt, W);
+    c.rope = lerp(c.rope, 105, Math.min(1, dt * 3));     // Seil wird hochgezogen
+    c.hx = lerp(c.hx, p.x + 6, Math.min(1, dt * 8));
+    c.hy = p.y - 50 - c.rope - 22;
+    if (c.t > c.nextFlash) {                               // Blitze unterwegs
+      flash = Math.max(flash, rand(0.35, 0.6));
+      c.nextFlash = c.t + rand(0.35, 0.7);
+    }
+    if (Math.random() < dt * 30) {
+      particles.push({ x: p.x + rand(-14, 14), y: p.y - rand(0, 50), vx: rand(-40, 40), vy: rand(300, 600),
+        life: 0.5, max: 0.5, r: rand(2, 4), color: `hsl(${(gameT * 600 + rand(0, 120)) % 360},100%,65%)` });
+    }
+    if (c.dist >= CALL_DIST) {
+      heliLeave = { x: c.hx, y: c.hy, t: 0 };
+      p.call = null;
+      // Sichere Landeplattform unter Pork, damit man nach dem Flug nicht sofort abstürzt
+      const ly = p.y + 160, lw = 110, lx = clamp(p.x - lw / 2, 4, W - lw - 4);
+      platforms = platforms.filter(o => Math.abs(o.y - ly) >= 34);
+      platforms.push({ x: lx, y: ly, w: lw, h: 14, vx: 0, theme: themeAt(altAt(ly)), item: null });
+      p.vy = -JUMP_V * 1.1;
+      startSpin(p, 0.8);
+      flash = 0.8;
+      Sound.stopHeli();
+      Sound.whoosh();
+    }
+  }
+}
+
 /* ---------- Haupt-Update während der Runde ---------- */
 function update(dt) {
   gameT += dt;
+  flash = Math.max(0, flash - dt * 2.5);
+  if (heliLeave) {
+    heliLeave.t += dt;
+    heliLeave.x -= 260 * dt;
+    heliLeave.y -= 420 * dt;
+    if (heliLeave.t > 2.5) heliLeave = null;
+  }
+  if (player.call) {
+    // Während des Anrufs steht die Welt still, nur der Heli-Ablauf läuft
+    updateCall(player, dt);
+    updateFx(dt);
+    const target = player.y - H * 0.45;
+    if (target < camY) camY = target;
+    genPlatforms();
+    player.minY = Math.min(player.minY, player.y);
+    meters = Math.max(0, Math.floor((startY - player.minY) / PX_PER_M));
+    return;
+  }
   for (const pl of platforms) {
     if (pl.vx) {
       pl.x += pl.vx * dt;
@@ -1841,10 +2036,141 @@ function drawItem(pl) {
       ctx.fillStyle = '#fff';
       ctx.fillRect(x + dx - 5, by, 11, 2);
     }
+  } else if (it.type === 'phone') {
+    const by = y - 22 + Math.sin(gameT * 3 + pl.x) * 3;
+    const ring = (gameT % 1.2) < 0.6;
+    const jx = ring ? Math.sin(gameT * 80) * 1.2 : 0;
+    drawPhone(x + jx, by, 1, ring ? Math.sin(gameT * 60) * 0.12 : 0);
+    if (ring) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2;
+      for (let k = 1; k <= 2; k++) {
+        ctx.beginPath();
+        ctx.arc(x, by, 12 + k * 5, -0.6, 0.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, by, 12 + k * 5, Math.PI - 0.6, Math.PI + 0.6);
+        ctx.stroke();
+      }
+    }
   } else if (it.type === 'bee') {
     const by = y - 24 + Math.sin(gameT * 3 + pl.x) * 4;
     drawBee(x + Math.sin(gameT * 1.7) * 6, by, 0.8, 1);
   }
+}
+
+function drawPhone(x, y, s, rot) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(s, s);
+  glow(ctx, 0, 0, 30, 'rgba(120,255,160,0.45)');
+  ctx.fillStyle = '#1b1b24';
+  ctx.strokeStyle = '#2a1520';
+  ctx.lineWidth = 2;
+  rr(ctx, -7, -12, 14, 24, 3.5);
+  ctx.fill();
+  ctx.stroke();
+  const sg = ctx.createLinearGradient(0, -10, 0, 10);
+  sg.addColorStop(0, '#ffb3c6');
+  sg.addColorStop(1, '#7a6bff');
+  ctx.fillStyle = sg;
+  rr(ctx, -5.5, -9.5, 11, 18, 2);
+  ctx.fill();
+  ctx.fillStyle = '#f2c3c8';
+  circle(ctx, 0, -4, 2.6);
+  ctx.fillStyle = '#26d07c';
+  circle(ctx, 2.8, 5, 2);
+  ctx.fillStyle = '#ff4d4d';
+  circle(ctx, -2.8, 5, 2);
+  ctx.restore();
+}
+
+// Pinker John-Pork-Helikopter (dir: -1 = schaut nach links)
+function drawHeli(x, y, dir) {
+  const OL = '#2a1520';
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = OL;
+  ctx.lineWidth = 2.5;
+  // Kufen
+  ctx.beginPath();
+  ctx.moveTo(-20, 12); ctx.lineTo(-16, 20);
+  ctx.moveTo(10, 12); ctx.lineTo(8, 20);
+  ctx.moveTo(-30, 20); ctx.lineTo(18, 20); ctx.quadraticCurveTo(24, 20, 25, 16);
+  ctx.stroke();
+  // Heckausleger + Heckrotor
+  ctx.fillStyle = '#ff5fa2';
+  ctx.beginPath();
+  ctx.moveTo(12, -6);
+  ctx.lineTo(52, -4);
+  ctx.lineTo(52, 2);
+  ctx.lineTo(12, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#c93d7c';
+  ctx.beginPath();
+  ctx.moveTo(48, -4); ctx.lineTo(56, -16); ctx.lineTo(58, 2); ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  const tr = Math.sin(gameT * 70) * 9;
+  ctx.strokeStyle = 'rgba(40,20,30,0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(55, -4 - tr); ctx.lineTo(55, -4 + tr);
+  ctx.stroke();
+  // Rumpf
+  ctx.strokeStyle = OL;
+  ctx.lineWidth = 2.5;
+  const bg = ctx.createLinearGradient(0, -16, 0, 14);
+  bg.addColorStop(0, '#ff9cc8');
+  bg.addColorStop(1, '#e8458c');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.ellipse(-4, 0, 26, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // Cockpitscheibe
+  ctx.fillStyle = '#9fe3ff';
+  ctx.beginPath();
+  ctx.moveTo(-28, -1);
+  ctx.quadraticCurveTo(-26, -13, -12, -13);
+  ctx.lineTo(-10, -1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillRect(-22, -10, 3, 6);
+  // Schweinchen-Logo
+  ctx.fillStyle = '#f2c3c8';
+  circle(ctx, 4, 1, 6);
+  ctx.fillStyle = '#e8a7b1';
+  ctx.beginPath();
+  ctx.ellipse(4, 2.5, 3, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = OL;
+  circle(ctx, 3, 2.5, 0.7);
+  circle(ctx, 5, 2.5, 0.7);
+  // Rotormast + Hauptrotor (Drehung als flackernde Ellipse)
+  ctx.fillStyle = '#5b6873';
+  ctx.fillRect(-6, -21, 4, 7);
+  const rw = 42 + Math.sin(gameT * 50) * 8;
+  ctx.fillStyle = 'rgba(60,60,80,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(-4, -21, rw, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(40,30,40,0.85)';
+  ctx.lineWidth = 2.5;
+  const a = gameT * 40;
+  ctx.beginPath();
+  ctx.moveTo(-4 - Math.cos(a) * rw, -21);
+  ctx.lineTo(-4 + Math.cos(a) * rw, -21);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawBee(x, y, s, facing) {
@@ -1899,7 +2225,7 @@ function drawPork(p, x) {
   const SKIN = '#f2c3c8';
   const FLANNEL = '#a3243a';
   const f = p.facing;
-  const armsUp = p.bee > 0 || p.vy < -250;
+  const armsUp = p.bee > 0 || p.vy < -250 || (p.call && p.call.phase === 'fly');
   ctx.save();
   ctx.translate(x, p.y);
   const sq = p.squash;
@@ -2110,7 +2436,41 @@ function drawPork(p, x) {
   ctx.moveTo(f * 3.5 - 9, -37);
   ctx.quadraticCurveTo(f * 3.5, -33.2, f * 3.5 + 9, -37);
   ctx.stroke();
+  // Handy am Ohr während des Anrufs
+  if (p.call && p.call.phase !== 'fly') {
+    drawPhone(f * 19, -52, 0.75, f * 0.3);
+    ctx.fillStyle = SKIN;
+    ctx.strokeStyle = OL;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(f * 19, -45, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
+
+  // Heli-Seil
+  if (p.call && p.call.phase !== 'dial' && p.call.rope > 0) {
+    const c = p.call;
+    const hx = c.hx + (x - p.x), hy = heliHook(p);
+    const endY = hy + c.rope;
+    ctx.strokeStyle = '#3b2a1e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(c.phase === 'fly' ? x : hx, endY);
+    ctx.stroke();
+    ctx.strokeStyle = '#c9a36b';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#8a99a6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(c.phase === 'fly' ? x : hx, endY + 3, 4, 0, Math.PI);
+    ctx.stroke();
+  }
 
   // Biene trägt ihn
   if (p.bee > 0) {
@@ -2190,6 +2550,8 @@ function render() {
   }
   ctx.globalAlpha = 1;
   if (player) drawPlayerWrapped(player);
+  if (player && player.call && player.call.phase !== 'dial') drawHeli(player.call.hx, player.call.hy, -1);
+  if (heliLeave) drawHeli(heliLeave.x, heliLeave.y, -1);
   ctx.textAlign = 'center';
   ctx.font = '22px "Luckiest Guy", sans-serif';
   ctx.lineWidth = 4;
@@ -2202,6 +2564,60 @@ function render() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  drawCallFx();
+}
+
+// Bildschirm-Effekte rund um den Handy-Anruf
+function drawCallFx() {
+  const c = player && player.call;
+  if (c && c.phase === 'fly') {
+    // Regenbogen-Schleier
+    const hue = (gameT * 300) % 360;
+    const gr = ctx.createLinearGradient(0, 0, W, H);
+    for (let k = 0; k <= 4; k++) gr.addColorStop(k / 4, `hsla(${(hue + k * 72) % 360},100%,60%,0.42)`);
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, W, H);
+    // Speed-Linien
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 16; i++) {
+      const a = AMB[i];
+      const yy = wrapMod(a.y * H + gameT * (1400 + a.s * 900), H + 120) - 60;
+      ctx.beginPath();
+      ctx.moveTo(a.x * W, yy);
+      ctx.lineTo(a.x * W, yy + 40 + a.s * 50);
+      ctx.stroke();
+    }
+  }
+  if (c && c.phase !== 'fly') {
+    // Abgedunkelt + "John Pork ruft an..."
+    const k = c.phase === 'dial' ? Math.min(1, c.t * 3) : Math.max(0, 1 - c.t * 1.5);
+    ctx.fillStyle = `rgba(15,5,25,${0.45 * k})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = k;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#3b1d2a';
+    ctx.fillStyle = '#ffd1dc';
+    ctx.font = '34px "Luckiest Guy", sans-serif';
+    const pulse = 1 + Math.sin(gameT * 8) * 0.04;
+    ctx.save();
+    ctx.translate(W / 2, H * 0.2);
+    ctx.scale(pulse, pulse);
+    ctx.strokeText('John Pork', 0, 0);
+    ctx.fillText('John Pork', 0, 0);
+    ctx.font = '20px "Luckiest Guy", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    const dots = '.'.repeat(1 + Math.floor(gameT * 3) % 3);
+    ctx.strokeText('ruft an' + dots, 0, 30);
+    ctx.fillText('ruft an' + dots, 0, 30);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.min(0.9, flash)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 }
 
 /* =========================================================
@@ -2242,7 +2658,7 @@ const el = {
   pause: $('pause'), over: $('over'), settings: $('settings'),
   btnPause: $('btnPause'), left: $('btnLeft'), right: $('btnRight'),
   bestVal: $('bestVal'), overScore: $('overScore'), overBest: $('overBest'),
-  puShoes: $('puShoes'), puBee: $('puBee')
+  puShoes: $('puShoes'), puBee: $('puBee'), puHeli: $('puHeli')
 };
 const show = (e, on) => e.classList.toggle('hidden', !on);
 
@@ -2254,7 +2670,9 @@ function setPlayUi(on) {
 }
 
 function startGame() {
-  Sound.stopBuzz();
+  Sound.stopLoops();
+  heliLeave = null;
+  flash = 0;
   platforms = [];
   particles = [];
   popups = [];
@@ -2283,7 +2701,7 @@ function startGame() {
 function pauseGame() {
   if (state !== 'playing') return;
   state = 'paused';
-  Sound.stopBuzz();
+  Sound.stopLoops();
   show(el.pause, true);
   el.btnPause.classList.add('active');
 }
@@ -2296,11 +2714,12 @@ function resumeGame() {
   show(el.pause, false);
   el.btnPause.classList.remove('active');
   if (player.bee > 0) Sound.startBuzz();
+  if (player.call && player.call.phase !== 'dial') Sound.startHeli();
 }
 
 function gameOver() {
   state = 'over';
-  Sound.stopBuzz();
+  Sound.stopLoops();
   Sound.death();
   const isRecord = meters > best;
   if (isRecord) {
@@ -2315,7 +2734,9 @@ function gameOver() {
 }
 
 function toMenu() {
-  Sound.stopBuzz();
+  Sound.stopLoops();
+  heliLeave = null;
+  flash = 0;
   state = 'menu';
   setPlayUi(false);
   show(el.pause, false);
@@ -2338,6 +2759,8 @@ function updateHud() {
   };
   pu(el.puShoes, player.shoes, SHOE_TIME);
   pu(el.puBee, player.bee, BEE_TIME);
+  const c = player.call;
+  pu(el.puHeli, c && c.phase === 'fly' ? CALL_DIST - c.dist : 0, CALL_DIST);
 }
 
 function refreshSoundButtons() {
