@@ -1,5 +1,15 @@
 # Pork Jump – Patchnotes
 
+## Version 1.4
+
+### Neu
+- **Trüffel sind jetzt eine Währung:** Alle Trüffel, die du im Run-Modus sammelst, werden dauerhaft gespeichert und über alle Runden zusammengezählt. Das gilt auch, wenn du einen Run über Pause abbrichst oder die App wechselst.
+- Deinen **Trüffel-Kontostand** siehst du im Hauptmenü oben links. Nach jedem Run zeigt das Game-Over-Fenster, wie viele dazugekommen sind, zum Beispiel „+12 Trüffel (gesamt 32)“.
+- **Shop (Ankündigung):** Im Hauptmenü gibt es unter „Start“ jetzt den Button **Shop**. Dort siehst du deinen Kontostand und drei geheime Skins als schwarze Umrisse. Was es genau wird und was es kostet, wird noch nicht verraten. **Coming soon!**
+
+### Änderungen
+- Die Versionsanzeige unten rechts steht jetzt auf **Version 1.4**.
+
 ## Version 1.3: Run-Modus
 
 ### Neu: Spielmodus-Auswahl

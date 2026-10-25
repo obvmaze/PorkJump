@@ -7,7 +7,7 @@
    ========================================================= */
 
 // ---------- Spiel-Konstanten (hier kann man am Gameplay drehen) ----------
-const VERSION = '1.3';
+const VERSION = '1.4';
 const W = 400;               // logische Breite der Welt
 const G = 1800;                // Schwerkraft (Einheiten/s²)
 const JUMP_V = 900;            // Absprung-Geschwindigkeit
@@ -2719,6 +2719,7 @@ function bankTruffles() {
 
 function refreshBests() {
   $('walletVal').textContent = truffleBank;
+  $('shopWallet').textContent = truffleBank;
   $('bestClassic').textContent = `Classic ${best} m`;
   $('bestRun').textContent = `Run ${bestRun} m`;
 }
@@ -2844,6 +2845,52 @@ tap('btnStart', () => show(el.modeSelect, true));
 tap('btnClassic', startGame);
 tap('btnRun', () => startRun());
 tap('btnModeBack', () => show(el.modeSelect, false));
+tap('btnShop', openShop);
+tap('btnShopBack', () => show($('shop'), false));
+
+/* ---------- Shop (Vorschau): Skins als schwarze Umrisse ---------- */
+// Pork wird auf das Spiel-Canvas gemalt, ausgeschnitten und komplett schwarz gefärbt.
+// Jede Variante bekommt ein anderes Accessoire, damit die Umrisse neugierig machen.
+function makeSilhouette(variant) {
+  const s = 4, pw = 64, ph = 86;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, pw * s, ph * s);
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  const p = newPlayer(pw / 2, ph - 4);
+  drawPork(p, pw / 2);
+  ctx.fillStyle = '#000';
+  const hx = pw / 2, hy = ph - 4 - 66;           // Oberkante des Kopfes
+  if (variant === 0) {                            // Cap
+    ctx.beginPath(); ctx.ellipse(hx, hy + 6, 15, 9, 0, Math.PI, 0); ctx.fill();
+    ctx.fillRect(hx, hy + 3, 22, 4);
+  } else if (variant === 1) {                     // Krone
+    ctx.beginPath();
+    ctx.moveTo(hx - 13, hy + 4); ctx.lineTo(hx - 13, hy - 10); ctx.lineTo(hx - 6, hy - 3); ctx.lineTo(hx, hy - 13);
+    ctx.lineTo(hx + 6, hy - 3); ctx.lineTo(hx + 13, hy - 10); ctx.lineTo(hx + 13, hy + 4);
+    ctx.closePath(); ctx.fill();
+  } else {                                        // Kopfhörer
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.beginPath(); ctx.arc(hx, hy + 18, 21, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(hx - 20, hy + 20, 5, 8, 0, 0, Math.PI * 2); ctx.ellipse(hx + 20, hy + 20, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const tmp = document.createElement('canvas');
+  tmp.width = pw * s;
+  tmp.height = ph * s;
+  const g = tmp.getContext('2d');
+  g.drawImage(canvas, 0, 0, pw * s, ph * s, 0, 0, pw * s, ph * s);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = '#1a1018';
+  g.fillRect(0, 0, tmp.width, tmp.height);
+  return tmp.toDataURL();
+}
+function openShop() {
+  refreshBests();
+  document.querySelectorAll('.skin-pic img').forEach(img => {
+    if (!img.src) img.src = makeSilhouette(+img.dataset.variant);
+  });
+  show($('shop'), true);
+}
 tap('btnRetry', retry);
 tap('btnOverMenu', toMenu);
 tap('btnToMenu', toMenu);

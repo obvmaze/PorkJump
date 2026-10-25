@@ -286,8 +286,8 @@ button {
 #btnRun { background: #6ee7ff; }
 .btn.ghost { background: #fff4f7; font-size: 18px; padding: 8px 10px 5px; }
 
-/* Trüffel-Konto im Hauptmenü (oben links) */
-#wallet {
+/* Trüffel-Konto im Hauptmenü und Shop (oben links) */
+.wallet {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));
   left: 14px;
@@ -302,4 +302,99 @@ button {
   text-shadow: 2px 2px 0 #3b1d2a;
   z-index: 30;
 }
-#wallet .truffle-ico { width: 24px; height: 21px; margin-top: -4px; }
+.wallet .truffle-ico { width: 24px; height: 21px; margin-top: -4px; }
+
+/* Shop-Button unter "Start" */
+.shopbtn {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 62px);
+  transform: translateX(-50%);
+  font-size: 26px;
+  padding: 10px 40px 6px;
+  border-radius: 20px;
+  border: 4px solid #3b1d2a;
+  background: linear-gradient(#ffe27a, #f2b705);
+  color: #3b1d2a;
+  box-shadow: 0 5px 0 #3b1d2a;
+}
+.shopbtn:active { box-shadow: 0 1px 0 #3b1d2a; margin-top: 4px; }
+
+/* Shop */
+#shop {
+  z-index: 26;
+  background: linear-gradient(#2b1055, #6e2a6e 60%, #a8406f);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+#shop.hidden { display: none !important; }
+.shop-title {
+  margin: 0;
+  font-size: 54px;
+  font-weight: normal;
+  color: #ffd1dc;
+  text-shadow: 0 4px 0 #c2456e, 0 7px 0 #3b1d2a;
+}
+.soon {
+  margin: 4px 0 6px;
+  font-size: 24px;
+  color: #ffd23f;
+  text-shadow: 2px 2px 0 #3b1d2a;
+  letter-spacing: 1px;
+  transform: rotate(-3deg);
+}
+.skins {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 380px;
+}
+.skin {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.skin-pic {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 18px;
+  border: 4px solid #3b1d2a;
+  background: radial-gradient(circle at 50% 40%, #fff4f7, #d9c4d6);
+  box-shadow: 0 5px 0 #3b1d2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.skin-pic img { width: 88%; height: auto; }
+.skin-pic b {
+  position: absolute;
+  top: 6px;
+  right: 9px;
+  font-weight: normal;
+  font-size: 24px;
+  color: #f2557f;
+  text-shadow: 1px 1px 0 #3b1d2a;
+}
+.price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 78%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 3px solid #3b1d2a;
+  background: #ffd23f;
+  box-shadow: 0 3px 0 #3b1d2a;
+}
+.price span { flex: 1; height: 4px; border-radius: 2px; background: rgba(59, 29, 42, 0.25); }
+.shop-back { width: auto; min-width: 180px; margin-top: 22px; }
