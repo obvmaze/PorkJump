@@ -576,7 +576,7 @@ function drawRunHaze(th) {
   gr.addColorStop(0.6, `rgba(${r},${g},${b},0.42)`);
   gr.addColorStop(1, `rgba(${r},${g},${b},0.66)`);
   ctx.fillStyle = gr;
-  ctx.fillRect(0, 0, W, run.gy);
+  ctx.fillRect(0, 0, W, H);   // bis ganz unten: in Abgründen sieht man den (gedämpften) Hintergrund
 }
 
 // Parallax-Hügel, damit man das Tempo spürt
@@ -1446,17 +1446,6 @@ function runRender() {
   ctx.save();
   if (run.shake > 0) ctx.translate(rand(-4, 4) * run.shake * 3, rand(-4, 4) * run.shake * 3);
   ctx.translate(-run.camX, 0);
-  // Abgründe: dunkler Schlund zwischen zwei Bodenstücken
-  for (let i = 0; i + 1 < run.ground.length; i++) {
-    const x0 = run.ground[i].x1, x1 = run.ground[i + 1].x0;
-    if (x1 <= x0 || x1 < run.camX || x0 > run.camX + W) continue;
-    const pit = ctx.createLinearGradient(0, run.gy, 0, H);
-    pit.addColorStop(0, 'rgba(10,4,20,0.55)');
-    pit.addColorStop(0.3, 'rgba(10,4,20,0.85)');
-    pit.addColorStop(1, 'rgba(5,2,10,0.97)');
-    ctx.fillStyle = pit;
-    ctx.fillRect(x0, run.gy, x1 - x0, H - run.gy);
-  }
   for (const g of run.ground) drawRunGround(g);
   drawRunBestFlag();
   for (const pl of run.plats) if (pl.x < run.camX + W + 40) drawPlatform(pl);
@@ -1559,8 +1548,10 @@ function runRender() {
       const cx = (b.left + b.width / 2 - wr.left) * k;
       let ty = (b.top - wr.top) * k - 10 - (lines.length - 1) * 17;
       for (const line of lines) {
-        ctx.strokeText(line, cx, ty);
-        ctx.fillText(line, cx, ty);
+        const half = ctx.measureText(line).width / 2;
+        const lx = clamp(cx, half + 6, W - half - 6);   // nicht über den Rand hinaus
+        ctx.strokeText(line, lx, ty);
+        ctx.fillText(line, lx, ty);
         ty += 17;
       }
     }
