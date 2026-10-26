@@ -42,6 +42,7 @@ function resize() {
   scale = canvas.width / W;
   H = canvas.height / scale;
   bgCache.clear();
+  bgJob = null;
   if (state === 'menu') initDemo();
 }
 
@@ -1143,19 +1144,53 @@ THEMES.splice(5, 0, GROTTO);
 THEMES.splice(7, 0, LABWORLD);
 
 // Hintergründe werden einmal in ein unsichtbares Canvas gemalt (spart Leistung)
+// Der nächste Hintergrund wird vorab in Streifen gemalt (ein Streifen pro Bild),
+// damit es beim Weltwechsel keinen Hänger gibt.
 const bgCache = new Map();
-function getBg(i) {
-  if (bgCache.has(i)) return bgCache.get(i);
+const BG_STRIPS = 6;
+let bgJob = null;
+function newBgCanvas() {
   const bs = Math.min(scale, 2.5);
   const c = document.createElement('canvas');
   c.width = Math.ceil(W * bs);
   c.height = Math.ceil(H * bs);
   const g = c.getContext('2d');
   g.scale(bs, bs);
+  return { c, g };
+}
+function cacheBg(i, c) {
+  bgCache.delete(i);
+  bgCache.set(i, c);                       // zuletzt benutzt = hinten
+  while (bgCache.size > 3) bgCache.delete(bgCache.keys().next().value);
+}
+function getBg(i) {
+  if (bgCache.has(i)) { const c = bgCache.get(i); cacheBg(i, c); return c; }
+  if (bgJob && bgJob.i === i) bgJob = null;
+  const { c, g } = newBgCanvas();
   THEMES[i].draw(g, W, H);
-  bgCache.set(i, c);
-  if (bgCache.size > 3) bgCache.delete(bgCache.keys().next().value);
+  cacheBg(i, c);
   return c;
+}
+function prepareBg(i) {
+  if (bgCache.has(i) || (bgJob && bgJob.i === i)) return;
+  const { c, g } = newBgCanvas();
+  bgJob = { i, c, g, strip: 0 };
+}
+function workBg() {
+  const j = bgJob;
+  if (!j) return;
+  const sh = H / BG_STRIPS;
+  j.g.save();
+  j.g.beginPath();
+  j.g.rect(0, j.strip * sh - 1, W, sh + 2);
+  j.g.clip();
+  THEMES[j.i].draw(j.g, W, H);
+  j.g.restore();
+  if (++j.strip >= BG_STRIPS) {
+    bgJob = null;
+    bgCache.set(j.i, j.c);
+    while (bgCache.size > 3) bgCache.delete(bgCache.keys().next().value);
+  }
 }
 
 // Feste Zufallspositionen für bewegte Deko
@@ -1624,6 +1659,12 @@ function findX(y, w) {
 
 function addPlatform(x, y, w, d, allowItem) {
   const p = { x, y, w, h: 14, vx: 0, theme: themeAt(altAt(y)), item: null };
+  // Item auf einer Plattform direkt darunter wäre verdeckt -> weg damit (passiert oberhalb des Bildes)
+  for (const o of platforms) {
+    if (!o.item || o.y <= y || o.y - y > 70) continue;
+    const ix = o.x + o.item.ox;
+    if (ix > x - 14 && ix < x + w + 14) o.item = null;
+  }
   if (Math.random() < lerp(0, 0.38, d) && altAt(y) > 40 && spotFree(x, y, w, true)) {
     p.vx = rand(40, lerp(60, 130, d)) * (Math.random() < 0.5 ? -1 : 1);
   }
@@ -1656,7 +1697,8 @@ function genPlatforms() {
     const gap = minGap + Math.pow(r, lerp(1.5, 0.7, d)) * (maxGap - minGap);
     topY -= gap;
     const w = lerp(86, 58, d) + rand(-6, 6);
-    const x = findX(topY, w);
+    let x = findX(topY, w);
+    if (x === null) { topY -= 30; x = findX(topY, w); }   // kein Platz: etwas höher versuchen
     addPlatform(x === null ? rand(4, W - w - 4) : x, topY, w, d, true);
     // In leichten Phasen gibt's manchmal eine Bonus-Plattform daneben (nur wenn Platz ist)
     if (Math.random() < lerp(0.3, 0.08, d)) {
@@ -2529,8 +2571,8 @@ function drawBackground(t, mOverride) {
     ctx.drawImage(getBg(j), 0, 0, W, H);
     drawAmbient(THEMES[j].amb, t, camY);
     ctx.globalAlpha = 1;
-  } else if (state === 'playing' && m % THEME_LEN > THEME_LEN - 120) {
-    getBg(j); // nächste Welt schon mal vorbereiten
+  } else if (state === 'playing') {
+    prepareBg(j); // nächste Welt schon mal (in Streifen) vorbereiten
   }
 }
 
@@ -2974,12 +3016,13 @@ function frame(ts) {
   const dt = Math.min(0.05, (ts - last) / 1000);
   last = ts;
   if (state === 'playing') {
-    acc += dt;
-    while (acc >= STEP) {
-      if (mode === 'run') runUpdate(STEP); else update(STEP);
-      acc -= STEP;
-      if (state !== 'playing') { acc = 0; break; }
+    // Bildzeit in gleich große Physik-Schritte (max. STEP) teilen: kein Ruckeln durch 1/2/3 Schritte pro Bild
+    const n = Math.max(1, Math.ceil(dt / STEP - 1e-6));
+    const h = dt / n;
+    for (let i = 0; i < n && state === 'playing'; i++) {
+      if (mode === 'run') runUpdate(h); else update(h);
     }
+    workBg();
   } else if (state === 'menu') {
     updateDemo(dt);
   } else if (state === 'over') {

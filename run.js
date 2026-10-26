@@ -45,7 +45,8 @@ const rEl = {
 /* ---------- Extra-Sounds für den Run-Modus ---------- */
 Object.assign(Sound, {
   jump2() { this.tone(520, 1150, 0.12, 'square', 0.05); },
-  truffle() { this.tone(1250, 1750, 0.07, 'square', 0.03); },
+  truffle(step = 0) { const f = 1050 * Math.pow(2, Math.min(step, 12) / 12); this.tone(f, f * 1.4, 0.07, 'square', 0.03); },
+  stomp() { this.tone(700, 1400, 0.12, 'square', 0.07); this.tone(180, 90, 0.12, 'triangle', 0.1); },
   hurt() { this.tone(320, 90, 0.35, 'sawtooth', 0.11); this.tone(160, 60, 0.3, 'square', 0.06); },
   pop() { this.tone(900, 180, 0.22, 'triangle', 0.13); },
   smash() { this.tone(180, 50, 0.2, 'square', 0.1); },
@@ -152,20 +153,24 @@ function jumpPath(sp, holdT) {
   return pts;
 }
 // Trüffel genau dort, wo Porks Körper beim passenden Sprung entlangfliegt
-function rgJumpArc(xTakeoff, sp, holdT, n) {
+function rgJumpArc(xTakeoff, sp, holdT, n, baseY = run.gy) {
   const path = jumpPath(sp, holdT);
   for (let i = 0; i < n; i++) {
     const k = Math.round((path.length - 1) * (0.22 + 0.56 * (n === 1 ? 0.5 : i / (n - 1))));
     const [dx, dy] = path[k];
-    rgTruffle(xTakeoff + dx, run.gy - 28 + dy);
+    rgTruffle(xTakeoff + dx, baseY - 28 + dy);
   }
 }
 // Bogen, dessen höchster Punkt über cx liegt
-function rgArcOver(cx, sp, holdT, n) {
+function rgArcOver(cx, sp, holdT, n, baseY = run.gy) {
   const path = jumpPath(sp, holdT);
   let apex = 0;
   for (let i = 1; i < path.length; i++) if (path[i][1] < path[apex][1]) apex = i;
-  rgJumpArc(cx - path[apex][0], sp, holdT, n);
+  rgJumpArc(cx - path[apex][0], sp, holdT, n, baseY);
+}
+// Trüffel entfernen, die in einem Hindernis stecken würden
+function clearTrufsAround(o, pad) {
+  run.trufs = run.trufs.filter(t => !(t.x > o.x - pad && t.x < o.x + o.w + pad && t.y > o.y - pad && t.y < o.y + o.h + pad));
 }
 
 function rgLine(x0, x1, y, step) {
@@ -189,9 +194,9 @@ function rgItem(x, y) {
 }
 function maybeItem(x, y) {
   run.itemCool--;
-  if (run.itemCool <= 0 && Math.random() < 0.3) {
+  if (run.itemCool <= 0 && Math.random() < 0.45) {
     rgItem(x, y);
-    run.itemCool = 5;
+    run.itemCool = 3;
     return true;
   }
   return false;
@@ -264,7 +269,10 @@ function rgPattern() {
     }
     case 'pit': {
       const w = rand(60, Math.min(sp * 0.55, 80 + d * 150));
+      const t0 = run.trufs.length;
       rgJumpArc(run.genX - 25, sp, R.HOLD_T, 3);   // Bahn eines gehaltenen Sprungs kurz vor der Kante
+      const mid = run.trufs[t0 + 1];
+      if (maybeItem(mid.x, mid.y)) run.trufs.splice(t0 + 1, 1);  // ab und zu ein Item mitten im Sprung
       rgGap(w);
       rgFlat(60);
       break;
@@ -280,8 +288,11 @@ function rgPattern() {
         const w = rand(110, 180);
         last = rgPlatform(x, y, w);
         rgLine(x + 25, x + w - 25, y - 28, 44);
-        if (d > 0.35 && w > 150 && Math.random() < 0.35) rgObstacle('low', x + w * 0.55, y);
-        else if (i === n - 1) maybeItem(x + w * 0.5, y - 90);
+        if (d > 0.35 && w > 150 && Math.random() < 0.35) {
+          const o = rgObstacle('low', x + w * 0.55, y);
+          clearTrufsAround(o, 30);
+          rgArcOver(o.x + o.w / 2, sp, 0, 3, y);
+        } else if (i === n - 1) maybeItem(x + w * 0.5, y - 90);
         x += w + rand(50, sp * 0.38);
         y = clamp(y + pick([-60, -30, 0, 30, 50]), run.gy - 170, run.gy - 70);
       }
@@ -367,6 +378,7 @@ function hurt() {
     return;
   }
   run.hearts--;
+  run.hitStop = 0.09;
   run.invuln = R.INVULN;
   run.shake = 0.3;
   run.hurtFlash = 0.5;
@@ -381,6 +393,7 @@ function hurt() {
 
 function runUpdate(dt) {
   const p = player;
+  if (run.hitStop > 0) { run.hitStop -= dt; return; }   // kurzer Stopp beim Aufprall
   gameT += dt;
   flash = Math.max(0, flash - dt * 2.5);
   run.shake = Math.max(0, run.shake - dt);
@@ -446,6 +459,16 @@ function runUpdate(dt) {
       }
     }
     // Kanten-Gnade: wer knapp unter die Kante rutscht, wird noch hochgezogen
+    if (!p.onGround) {
+      for (const o of run.obs) {
+        if (o.kind !== 'tall' || o.dead) continue;
+        if (prevY <= o.y + 2 && p.y >= o.y && p.x + 9 > o.x && p.x - 9 < o.x + o.w) {
+          p.y = o.y;
+          p.onGround = true;
+          break;
+        }
+      }
+    }
     if (!p.onGround && prevY <= run.gy + 16 && p.y >= run.gy && (groundUnder(p.x) || run.turbo > 0)) {
       p.y = run.gy;
       p.onGround = true;
@@ -498,6 +521,17 @@ function runUpdate(dt) {
     const s = 4;
     const ox0 = o.x + s, ox1 = o.x + o.w - s, oy0 = o.y + s, oy1 = o.y + o.h - (o.kind === 'bar' ? 0 : s);
     if (hb.x1 > ox0 && hb.x0 < ox1 && hb.y1 > oy0 && hb.y0 < oy1) {
+      const stomp = (o.kind === 'flier' || o.kind === 'roller') && p.vy > 0 && prevY <= o.y + 10;
+      if (stomp) {
+        smash(o);
+        p.vy = -R.JUMP_V * 0.85;
+        run.jumps = 1;                 // Doppelsprung danach wieder möglich
+        run.truffles += 3;
+        run.hitStop = 0.06;
+        Sound.stomp();
+        runPopup(o.x + o.w / 2, o.y - 20, '+3', '#ffd23f');
+        continue;
+      }
       if (run.turbo > 0) smash(o);
       else if (run.invuln <= 0) {
         if (run.shield) smash(o);
@@ -520,7 +554,9 @@ function runUpdate(dt) {
     if (dist < 24) {
       t.taken = true;
       run.truffles++;
-      Sound.truffle();
+      run.combo = gameT - (run.lastTruf || -9) < 0.5 ? (run.combo || 0) + 1 : 0;
+      run.lastTruf = gameT;
+      Sound.truffle(run.combo);
       particles.push({ x: t.x, y: t.y, vx: 0, vy: -80, life: 0.35, max: 0.35, r: 3, color: '#ffd23f' });
     }
   }
@@ -554,6 +590,10 @@ function runUpdate(dt) {
   run.camX = p.x - W * 0.2;
   runGen();
   meters = Math.max(meters, Math.floor(xToM(p.x - R.START_X)));
+  if (meters >= (run.nextMile || 100)) {
+    runPopup(p.x + 70, run.gy - 170, `${run.nextMile || 100} m!`, '#ffffff');
+    run.nextMile = (run.nextMile || 100) + 100;
+  }
 
   if (p.y > H + 80) gameOver();
 }
