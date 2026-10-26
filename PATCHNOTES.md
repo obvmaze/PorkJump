@@ -1,5 +1,32 @@
 # Pork Jump – Patchnotes
 
+## Version 1.5: Feinschliff
+
+### Neu im Run-Modus
+- **Draufspringen:** Wer auf Flieger und Roller springt, besiegt sie. Pork prallt hoch, bekommt **+3 Trüffel** und kann danach wieder doppelt springen.
+- **Kistenstapel:** Auf denen kann man jetzt stehen. Nur wer seitlich reinläuft, verliert ein Herz.
+- **Treffer-Stopp:** Bei Treffern und beim Besiegen hält das Spiel für einen Sekundenbruchteil an. Das gibt mehr Wucht.
+- **Trüffel-Serien:** Sammelst du Trüffel schnell hintereinander, wird der Sammel-Ton jedes Mal etwas höher.
+- **Meilensteine:** Alle 100 m erscheint kurz „100 m!“, „200 m!“ und so weiter.
+- **Items** kommen jetzt deutlich häufiger, etwa alle 200 m statt alle 700 m. Manchmal schwebt eins mitten in der Sprungbahn über einem Abgrund.
+
+### Flüssiger (beide Modi)
+- Die Physik passt sich jetzt jedem einzelnen Bild an. Das beseitigt kleine Mikro-Ruckler, besonders beim schnellen Scrollen im Run-Modus.
+- Kein Hänger mehr beim Wechsel in eine neue Welt: Der nächste Hintergrund wird vorab Stück für Stück vorbereitet.
+- Weniger Speicher-Müll pro Bild, das bedeutet weniger zufällige Ruckler.
+
+### Bugfixes
+- **Classic:** Federschuhe, Biene und Handy zappeln nicht mehr wild, wenn sie auf beweglichen Plattformen liegen.
+- **Classic:** Items erscheinen nicht mehr halb verdeckt unter der nächsten Plattform.
+- **Classic:** Bewegliche Plattformen halten immer genug Abstand zu anderen Plattformen.
+- **Run:** In Abgründen sieht man jetzt den Hintergrund der Welt. Vorher war es dort dunkel, und bei langen Abgründen tauchte der Hintergrund plötzlich auf.
+- **Run:** Auf schwebenden Brücken lagen manche Trüffel mitten in einem Hindernis. Jetzt führt ein Sprungbogen darüber.
+- **Run:** Vom Magnet angezogene Trüffel zappeln nicht mehr.
+- **Run:** Die Steuerungs-Hinweise am Anfang werden nicht mehr am Bildrand abgeschnitten.
+
+### Änderungen
+- Die Versionsanzeige unten rechts steht jetzt auf **Version 1.5**.
+
 ## Version 1.4
 
 ### Neu
