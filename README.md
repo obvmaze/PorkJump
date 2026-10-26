@@ -21,6 +21,12 @@ Aktuelle Version: **1.5**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES
 - **Trüffel-Währung** über alle Runden (Anzeige im Hauptmenü), **Shop** als Vorschau (Skins kommen bald)
 - Meter-Anzeige, Pause-Menü (Sound an/aus, Hauptmenü), Bestleistungen lokal gespeichert, Rekord-Markierung im Level
 
+## Spielstand (Trüffel, Rekorde, gekaufte Sachen)
+
+- Der Spielstand wird doppelt gespeichert: im Browser **und** im dauerhaften Server-Speicher des Spiel-Links, privat pro Person. Updates löschen ihn nicht.
+- Beim Start werden beide zusammengeführt: Zahlen nehmen den höheren Wert, gekaufte Sachen werden vereinigt. Trüffel zählen getrennt als „verdient“ und „ausgegeben“, so geht beim Zusammenführen nichts verloren und nichts wird doppelt gezählt.
+- **Regel für alle Updates:** Speicher-Schlüssel (`porkjump_*` bzw. `best`, `bestRun`, `earned`, `spent`, `owned`) nie umbenennen oder löschen, nur neue hinzufügen. Käufe immer als `spent` + `owned` speichern.
+
 ## Dateien
 
 - `index.html` – Aufbau (Menüs, Buttons)

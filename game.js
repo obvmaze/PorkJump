@@ -1419,10 +1419,88 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* egal */ } }
 };
-let best = store.get('porkjump_best', 0);
-let bestRun = store.get('porkjump_best_run', 0);
-let truffleBank = store.get('porkjump_truffles', 0);   // Trüffel-Währung über alle Runden
+/* ---------- SPIELSTAND ----------
+   WICHTIG für alle künftigen Updates: Diese Speicher-Schlüssel nie umbenennen
+   oder löschen, nur neue dazu. Der Spielstand liegt doppelt:
+   1. im Browser (localStorage) – geht auch ohne Anmeldung, aber nur auf diesem Gerät,
+   2. im dauerhaften Server-Speicher des Spiel-Links (pro Person, übersteht jedes Update).
+   Beim Start werden beide zusammengeführt, und zwar so, dass nie etwas verloren geht:
+   Zahlen nehmen immer den höheren Wert, Listen (gekaufte Skins) werden vereinigt.
+   Trüffel werden deshalb als "verdient" und "ausgegeben" getrennt gezählt
+   (beide wachsen nur) – Kontostand = verdient − ausgegeben. */
+const save = {
+  best: store.get('porkjump_best', 0),
+  bestRun: store.get('porkjump_best_run', 0),
+  earned: Math.max(store.get('porkjump_truffles_earned', 0), store.get('porkjump_truffles', 0)),
+  spent: store.get('porkjump_truffles_spent', 0),
+  owned: store.get('porkjump_owned', [])          // gekaufte Skins/Sachen (für den Shop)
+};
+let best = save.best;
+let bestRun = save.bestRun;
+let truffleBank = save.earned - save.spent;     // Trüffel-Währung über alle Runden
 let soundOn = store.get('porkjump_sound', true);
+
+function mergeSave(other) {
+  if (!other) return;
+  const num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
+  save.best = Math.max(save.best, best, num(other.best));
+  save.bestRun = Math.max(save.bestRun, bestRun, num(other.bestRun));
+  save.earned = Math.max(save.earned, num(other.earned));
+  save.spent = Math.max(save.spent, num(other.spent));
+  if (Array.isArray(other.owned)) for (const k of other.owned) if (!save.owned.includes(k)) save.owned.push(k);
+  best = save.best;
+  bestRun = save.bestRun;
+  truffleBank = save.earned - save.spent;
+}
+
+function saveLocal() {
+  store.set('porkjump_best', save.best);
+  store.set('porkjump_best_run', save.bestRun);
+  store.set('porkjump_truffles_earned', save.earned);
+  store.set('porkjump_truffles_spent', save.spent);
+  store.set('porkjump_truffles', save.earned - save.spent);   // alter Schlüssel, für ältere Versionen
+  store.set('porkjump_owned', save.owned);
+}
+
+// Server-Speicher (nur im Spiel-Link vorhanden; lokal geöffnet läuft alles nur über den Browser)
+const cloudSave = { ref: null, busy: false, dirty: false };
+async function pushCloud() {
+  if (!cloudSave.ref) return;
+  if (cloudSave.busy) { cloudSave.dirty = true; return; }   // immer nur ein Schreibvorgang gleichzeitig
+  cloudSave.busy = true;
+  try {
+    await cloudSave.ref.set({ best: save.best, bestRun: save.bestRun, earned: save.earned, spent: save.spent, owned: save.owned, v: 1 });
+  } catch (e) {
+    if (e && e.code === 'invalid_argument') cloudSave.ref = null;   // diese Person darf hier nicht speichern
+  }
+  cloudSave.busy = false;
+  if (cloudSave.dirty) { cloudSave.dirty = false; pushCloud(); }
+}
+function saveProgress() {
+  save.best = Math.max(save.best, best);
+  save.bestRun = Math.max(save.bestRun, bestRun);
+  saveLocal();
+  pushCloud();
+}
+async function initCloudSave() {
+  try {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    const ref = db.doc('data/users/' + id + '/save');
+    const snap = await ref.get();
+    const remote = snap.exists ? snap.data() : null;
+    mergeSave(remote);
+    saveLocal();
+    refreshBests();
+    cloudSave.ref = ref;
+    const same = remote && remote.best === save.best && remote.bestRun === save.bestRun && remote.earned === save.earned &&
+      remote.spent === save.spent && Array.isArray(remote.owned) && remote.owned.length === save.owned.length;
+    if (!same) pushCloud();
+  } catch (e) { /* kein Server-Speicher: Browser-Speicher reicht */ }
+}
 
 /* =========================================================
    SOUND – alles live erzeugt, keine Sounddateien nötig
@@ -2763,8 +2841,9 @@ function bankTruffles() {
   const add = run.truffles - (run.banked || 0);
   if (add <= 0) return;
   run.banked = run.truffles;
-  truffleBank += add;
-  store.set('porkjump_truffles', truffleBank);
+  save.earned += add;
+  truffleBank = save.earned - save.spent;
+  saveProgress();
 }
 
 function refreshBests() {
@@ -2833,10 +2912,10 @@ function gameOver() {
   const isRecord = meters > (isRun ? bestRun : best);
   if (isRecord && isRun) {
     bestRun = meters;
-    store.set('porkjump_best_run', bestRun);
+    saveProgress();
   } else if (isRecord) {
     best = meters;
-    store.set('porkjump_best', best);
+    saveProgress();
   }
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
@@ -3041,6 +3120,7 @@ function frame(ts) {
 
 resize();
 refreshBests();
+initCloudSave();
 $('version').textContent = `Version ${VERSION}`;
 refreshSoundButtons();
 initDemo();
