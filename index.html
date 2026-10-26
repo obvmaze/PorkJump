@@ -7,7 +7,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#2b1055">
+  <meta name="apple-mobile-web-app-title" content="Pork Jump">
   <title>Pork Jump</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
@@ -95,6 +99,13 @@
       <div class="panel">
         <h2>Einstellungen</h2>
         <button class="btn soundToggle">Sound: An</button>
+        <div class="savebox">
+          <p class="savehint">Spielstand-Code: damit nimmst du Trüffel, Rekorde und Skins auf ein anderes Gerät mit.</p>
+          <button class="btn small" id="btnSaveExport">Code anzeigen</button>
+          <textarea id="saveCode" rows="2" spellcheck="false" placeholder="Code hier einfügen …" aria-label="Spielstand-Code"></textarea>
+          <button class="btn small" id="btnSaveImport">Code laden</button>
+          <p id="saveMsg" class="savemsg"></p>
+        </div>
         <button class="btn" id="btnCloseSettings">Schließen</button>
       </div>
     </div>

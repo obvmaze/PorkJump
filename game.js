@@ -1483,6 +1483,8 @@ function saveProgress() {
   pushCloud();
 }
 async function initCloudSave() {
+  // Browser bitten, die Spieldaten nie automatisch zu löschen (wo unterstützt)
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }
   try {
     if (!window.claude || typeof window.claude.use !== 'function') return;
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
@@ -3025,6 +3027,45 @@ tap('btnOverMenu', toMenu);
 tap('btnToMenu', toMenu);
 tap('btnGear', () => show(el.settings, true));
 tap('btnCloseSettings', () => show(el.settings, false));
+
+/* ---------- Spielstand-Code (Gerätewechsel) ---------- */
+// Code = Spielstand als Text + Prüfsumme. Laden führt zusammen (höherer Wert gewinnt), es geht nie etwas verloren.
+function checksum(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+function exportSave() {
+  const body = JSON.stringify({ b: save.best, r: save.bestRun, e: save.earned, s: save.spent, o: save.owned });
+  return 'PJ1-' + btoa(unescape(encodeURIComponent(body))) + '-' + checksum(body);
+}
+function importSave(code) {
+  const m = /^PJ1-([A-Za-z0-9+/=]+)-([a-z0-9]+)$/.exec(code.trim().replace(/\s+/g, ''));
+  if (!m) return false;
+  let body;
+  try { body = decodeURIComponent(escape(atob(m[1]))); } catch (e) { return false; }
+  if (checksum(body) !== m[2]) return false;
+  let d;
+  try { d = JSON.parse(body); } catch (e) { return false; }
+  mergeSave({ best: d.b, bestRun: d.r, earned: d.e, spent: d.s, owned: d.o });
+  saveProgress();
+  refreshBests();
+  return true;
+}
+const saveMsg = t => { $('saveMsg').textContent = t; };
+tap('btnSaveExport', () => {
+  const box = $('saveCode');
+  box.value = exportSave();
+  box.focus();
+  box.select();
+  const done = () => saveMsg('Code kopiert. Auf dem neuen Gerät einfügen und „Code laden“ drücken.');
+  try {
+    navigator.clipboard.writeText(box.value).then(done, () => saveMsg('Code markiert, bitte kopieren.'));
+  } catch (e) { saveMsg('Code markiert, bitte kopieren.'); }
+});
+tap('btnSaveImport', () => {
+  saveMsg(importSave($('saveCode').value) ? `Geladen! Du hast jetzt ${truffleBank} Trüffel.` : 'Der Code stimmt nicht. Bitte komplett kopieren.');
+});
 el.btnPause.addEventListener('pointerdown', e => {
   e.preventDefault();
   Sound.init();
@@ -3066,7 +3107,9 @@ const keyMap = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d
 // Run-Modus: zusätzlich Hoch/Leertaste = springen, Runter = sliden
 const runKeyMap = { ArrowUp: 'right', w: 'right', W: 'right', ' ': 'right', ArrowDown: 'left', s: 'left', S: 'left' };
 const keyFor = e => keyMap[e.key] || (mode === 'run' && state === 'playing' ? runKeyMap[e.key] : undefined);
+const typing = e => e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT');
 window.addEventListener('keydown', e => {
+  if (typing(e)) return;          // im Textfeld (Spielstand-Code) normal tippen lassen
   const k = keyFor(e);
   if (k) {
     if (k === 'right' && !e.repeat && !input.right) input.rightPress++;
@@ -3082,6 +3125,7 @@ window.addEventListener('keydown', e => {
   }
 });
 window.addEventListener('keyup', e => {
+  if (typing(e)) return;
   const k = keyMap[e.key] || runKeyMap[e.key];
   if (k) input[k] = false;
 });

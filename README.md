@@ -2,8 +2,11 @@
 
 Hochkant endless Jump 'n' Run mit John Pork in der Hauptrolle
 
-## Spielen: https://claude.ai/artifact/2oTBmyx1Kstr6P5sn3DS4i
+## Spielen
 
+- **Online für alle (ohne Account):** https://obvmaze.github.io/PorkJump/
+  Am Handy über „Teilen → Zum Home-Bildschirm“ als App mit eigenem Icon speichern.
+- **Claude-Spiel-Link:** https://claude.ai/artifact/2oTBmyx1Kstr6P5sn3DS4i (nur mit Claude-Account)
 - **Lokal:** `index.html` im Browser öffnen (Doppelklick reicht).
 - **Modus wählen:** Nach „Start“ zwischen **Classic** (nach oben springen) und **Run** (waagerecht laufen) wählen.
 - **Classic:** Buttons links/rechts gedrückt halten. Am PC Pfeiltasten oder A/D.
@@ -25,6 +28,7 @@ Aktuelle Version: **1.5**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES
 
 - Der Spielstand wird doppelt gespeichert: im Browser **und** im dauerhaften Server-Speicher des Spiel-Links, privat pro Person. Updates löschen ihn nicht.
 - Beim Start werden beide zusammengeführt: Zahlen nehmen den höheren Wert, gekaufte Sachen werden vereinigt. Trüffel zählen getrennt als „verdient“ und „ausgegeben“, so geht beim Zusammenführen nichts verloren und nichts wird doppelt gezählt.
+- Auf der GitHub-Pages-Seite liegt der Spielstand im Browser des Spielers (Adresse bleibt bei Updates gleich, das Spiel bittet den Browser, die Daten dauerhaft zu behalten). Für ein neues Gerät gibt es in den Einstellungen den **Spielstand-Code** (exportieren / laden, führt verlustfrei zusammen).
 - **Regel für alle Updates:** Speicher-Schlüssel (`porkjump_*` bzw. `best`, `bestRun`, `earned`, `spent`, `owned`) nie umbenennen oder löschen, nur neue hinzufügen. Käufe immer als `spent` + `owned` speichern.
 
 ## Dateien
