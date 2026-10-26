@@ -1635,7 +1635,8 @@ function addPlatform(x, y, w, d, allowItem) {
     else if (r < 0.0665) type = 'bee';
     else if (r < 0.0715 && altAt(y) > 60) type = 'phone';
     if (type) {
-      p.item = { type, ox: type === 'tramp' ? rand(18, w - 18) : w / 2, squish: 0 };
+      // phase: fester Schwebe-Takt pro Item (nicht an die Position gekoppelt, sonst zappelt es auf beweglichen Plattformen)
+      p.item = { type, ox: type === 'tramp' ? rand(18, w - 18) : w / 2, squish: 0, phase: Math.random() * Math.PI * 2 };
       itemCooldown = 4;
     }
   }
@@ -2012,7 +2013,7 @@ function drawItem(pl) {
     ctx.ellipse(x, y - 12 + sq + (sq ? 2 : 0), 14, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
   } else if (it.type === 'shoes') {
-    const by = y - 14 + Math.sin(gameT * 4 + pl.x) * 3;
+    const by = y - 14 + Math.sin(gameT * 4 + (it.phase || 0)) * 3;
     glow(ctx, x, by, 26, 'rgba(110,231,255,0.45)');
     for (const dx of [-8, 7]) {
       ctx.strokeStyle = '#9aa5b5';
@@ -2030,7 +2031,7 @@ function drawItem(pl) {
       ctx.fillRect(x + dx - 5, by, 11, 2);
     }
   } else if (it.type === 'phone') {
-    const by = y - 22 + Math.sin(gameT * 3 + pl.x) * 3;
+    const by = y - 22 + Math.sin(gameT * 3 + (it.phase || 0)) * 3;
     const ring = (gameT % 1.2) < 0.6;
     const jx = ring ? Math.sin(gameT * 80) * 1.2 : 0;
     drawPhone(x + jx, by, 1, ring ? Math.sin(gameT * 60) * 0.12 : 0);
@@ -2047,7 +2048,7 @@ function drawItem(pl) {
       }
     }
   } else if (it.type === 'bee') {
-    const by = y - 24 + Math.sin(gameT * 3 + pl.x) * 4;
+    const by = y - 24 + Math.sin(gameT * 3 + (it.phase || 0)) * 4;
     drawBee(x + Math.sin(gameT * 1.7) * 6, by, 0.8, 1);
   }
 }

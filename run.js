@@ -131,7 +131,7 @@ function rgObstacle(kind, x, baseY, wOverride) {
 }
 
 function rgTruffle(x, y) {
-  run.trufs.push({ x, y, taken: false });
+  run.trufs.push({ x, y, taken: false, phase: x * 0.05 });
 }
 // Simuliert einen Sprung (holdT = wie lange gehalten) und liefert die Flugbahn
 const pathCache = new Map();
@@ -637,8 +637,8 @@ function drawRunGround(seg) {
   ctx.stroke();
 }
 
-function drawTruffle(x, y) {
-  const bob = Math.sin(gameT * 4 + x * 0.05) * 2;
+function drawTruffle(x, y, phase) {
+  const bob = Math.sin(gameT * 4 + phase) * 2;
   y += bob;
   glow(ctx, x, y, 14, 'rgba(255,215,120,0.35)');
   ctx.fillStyle = '#4a2c18';
@@ -1460,7 +1460,7 @@ function runRender() {
   for (const g of run.ground) drawRunGround(g);
   drawRunBestFlag();
   for (const pl of run.plats) if (pl.x < run.camX + W + 40) drawPlatform(pl);
-  for (const t of run.trufs) if (!t.taken && t.x < run.camX + W + 20) drawTruffle(t.x, t.y);
+  for (const t of run.trufs) if (!t.taken && t.x < run.camX + W + 20) drawTruffle(t.x, t.y, t.phase);
   for (const it of run.items) if (!it.taken && it.x < run.camX + W + 40) drawRunItem(it);
   for (const o of run.obs) if (o.x < run.camX + W + 60) drawObstacle(o);
   for (const q of particles) {
