@@ -206,12 +206,14 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
 function runGen() {
   while (run.genX < run.camX + W * 3) rgPattern();
-  // Alte Sachen hinter der Kamera wegräumen
+  // Alte Sachen hinter der Kamera wegräumen – nur alle ~100 px, nicht jeden Schritt
+  if (run.camX - (run.lastClean || -1e9) < 100) return;
+  run.lastClean = run.camX;
   const gone = run.camX - 150;
-  run.obs = run.obs.filter(o => o.x + o.w > gone && o.y < H + 200 && !o.vanish);
-  run.plats = run.plats.filter(p => p.x + p.w > gone);
-  run.trufs = run.trufs.filter(t => t.x > gone && !t.taken);
-  run.items = run.items.filter(t => t.x > gone && !t.taken);
+  compact(run.obs, o => o.x + o.w > gone && o.y < H + 200 && !o.vanish);
+  compact(run.plats, p => p.x + p.w > gone);
+  compact(run.trufs, t => t.x > gone && !t.taken);
+  compact(run.items, t => t.x > gone && !t.taken);
   while (run.ground.length > 2 && run.ground[0].x1 < gone) run.ground.shift();
 }
 

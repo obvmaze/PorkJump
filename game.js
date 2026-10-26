@@ -1707,7 +1707,7 @@ function genPlatforms() {
       if (x2 !== null) addPlatform(x2, y2, w, d, false);
     }
   }
-  platforms = platforms.filter(p => p.y < camY + H + 80);
+  compact(platforms, p => p.y < camY + H + 80);
 }
 
 /* ---------- Physik für die Spielfigur ---------- */
@@ -1837,11 +1837,18 @@ function sparkle(x, y) {
 function popup(x, y, text, color) {
   popups.push({ x: clamp(x, 70, W - 70), y, text, color, life: 1 });
 }
+// Abgelaufene Einträge an Ort und Stelle entfernen (keine neuen Listen = weniger Speicher-Müll, weniger Ruckler)
+function compact(arr, alive) {
+  let n = 0;
+  for (let i = 0; i < arr.length; i++) if (alive(arr[i])) arr[n++] = arr[i];
+  arr.length = n;
+}
+const isAlive = q => q.life > 0;
 function updateFx(dt) {
   for (const q of particles) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 200 * dt; q.life -= dt; }
-  particles = particles.filter(q => q.life > 0);
+  compact(particles, isAlive);
   for (const q of popups) { q.y -= 40 * dt; q.life -= dt; }
-  popups = popups.filter(q => q.life > 0);
+  compact(popups, isAlive);
 }
 
 /* ---------- Handy-Anruf: Einfrieren -> Wählen -> Heli -> Seil -> Abflug ---------- */
