@@ -332,12 +332,18 @@ function makeTextures() {
     g.fillRect(0, 0, w, h);
     g.fillStyle = '#1d1d24';
     for (let x = -h; x < w; x += 40) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 14, h); g.lineTo(x + 14 + 12, h - 12); g.lineTo(x + 12, h - 12); g.fill(); }
+    // Warndreieck mit Ausrufezeichen
     g.fillStyle = '#e8262e';
-    g.beginPath(); g.moveTo(54, 18); g.lineTo(54, 50); g.lineTo(34, 50); g.lineTo(64, 78); g.lineTo(94, 50); g.lineTo(74, 50); g.lineTo(74, 18); g.closePath(); g.fill();
+    g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(62, 10); g.lineTo(96, 74); g.lineTo(28, 74); g.closePath(); g.fill();
+    g.strokeStyle = '#e8262e'; g.lineWidth = 6; g.stroke();
+    g.fillStyle = '#ffd23f';
+    g.fillRect(58, 30, 8, 26);
+    g.fillRect(58, 61, 8, 7);
     g.font = 'bold 40px "Luckiest Guy", Arial Black, sans-serif';
-    g.fillStyle = '#1d1d24';
+    g.fillStyle = '#e8262e';
     g.textBaseline = 'middle';
-    g.fillText('DUCKEN', 106, 44);
+    g.fillText('DANGER!', 104, 44, 144);
   });
   T.kioskSign = canvasTex(256, 96, (g, w, h) => {
     g.fillStyle = '#ff5fa2';
@@ -1781,7 +1787,7 @@ function addSign(ch, s, d) {
    Wie man sie schafft:
    - barrier (Baustellen-Absperrung)  -> springen      (Treffer: -1 Herz)
    - crates  (Kistenstapel, niedrig)  -> springen      (Treffer: -1 Herz)
-   - gate    (Balken "DUCKEN")        -> sliden        (Treffer: -1 Herz)
+   - gate    (Balken "DANGER!")        -> sliden        (Treffer: -1 Herz)
    - kiosk / container (groß)         -> Spur wechseln (Aufprall: Lauf vorbei)
    - crab    (Krabbe, kommt entgegen) -> springen/ausweichen (-1 Herz)
    - gull    (Möwe, fliegt entgegen)  -> sliden/ausweichen  (-1 Herz)
@@ -2710,7 +2716,7 @@ function r3Update(dt) {
 function hitObstacle(o) {
   const P = r3.pl;
   o.hit = true;
-  if (o.def.lethal) { die(); return; }
+  if (o.def.lethal) { P.deathBlock = BLOCKS.has(o.kind); die(); return; }
   P.hearts--;
   P.hitT = 0.55;
   P.invuln = R3.INVULN;
@@ -2740,21 +2746,24 @@ function die() {
 }
 
 /* ---------- Kamera ---------- */
+// Kamera: hoch genug, damit man weit nach vorne sieht, was kommt
+const CAM_BACK = 6.8, CAM_UP = 4.3, CAM_AHEAD = 14, CAM_LOOK_H = 0.5;
 function updateCamera(dt) {
   const P = r3.pl, cam = E.camera;
   const bee = P.beeT > 0 ? 1 : 0;
   // hinter und über Pork, schaut ein Stück voraus – folgt Kurven und Höhen
-  const back = 6.4 + bee * 2.2, up = 3.0 + P.y * 0.55 + bee * 1.2;
+  const back = CAM_BACK + bee * 2.2, up = CAM_UP + P.y * 0.55 + bee * 1.2;
   worldAt(P.s - back, P.x * 0.6, up, _cv);
-  worldAt(P.s + 8, P.x * 0.75, 0.9 + P.y * 0.65, _lv);
+  worldAt(P.s + CAM_AHEAD, P.x * 0.75, CAM_LOOK_H + P.y * 0.65, _lv);
   if (P.dead) {
     // Game Over: Kamera schwenkt nach vorne, damit man Pork sieht
     const k = smooth01(Math.min(1, P.deadT / 1.4));
     const p = trackAt(P.s, _tp1);
     const c = Math.cos(p.yaw), sn = Math.sin(p.yaw);
-    const ang = k * 2.4;
+    // vor einem Kiosk/Container nur seitlich herum, sonst landet die Kamera darin
+    const ang = k * (P.deathBlock ? 1.45 : 2.4) * (P.x > 0 ? -1 : 1);
     const px = p.x - c * P.x, pz = p.z + sn * P.x;
-    _cv.set(px - Math.sin(p.yaw + ang) * 4.6, p.y + 3.4 + k * 0.8, pz - Math.cos(p.yaw + ang) * 4.6);
+    _cv.set(px - Math.sin(p.yaw + ang) * 4.6, p.y + 3.4 + k * (P.deathBlock ? 1.8 : 0.8), pz - Math.cos(p.yaw + ang) * 4.6);
     _lv.set(px, p.y + 0.4, pz);
   }
   if (r3.intro > 0 && !P.dead) {
@@ -2762,8 +2771,8 @@ function updateCamera(dt) {
     const k = smooth01(1 - r3.intro / 1.1);
     const p = trackAt(P.s, _tp1);
     const a = (1 - k) * Math.PI;
-    const dist = r3lerp(4.0, 6.4, k);
-    _cv.set(p.x - Math.sin(p.yaw + a) * dist, p.y + r3lerp(1.6, 3.0, k), p.z - Math.cos(p.yaw + a) * dist);
+    const dist = r3lerp(4.0, CAM_BACK, k);
+    _cv.set(p.x - Math.sin(p.yaw + a) * dist, p.y + r3lerp(1.6, CAM_UP, k), p.z - Math.cos(p.yaw + a) * dist);
     _lv.set(p.x, p.y + r3lerp(1.2, 0.9, k), p.z);
   }
   const kp = r3.intro > 0 ? 1 : damp(P.dead ? 3 : 9, dt);
@@ -2835,13 +2844,17 @@ function updateWorld(dt) {
     const ph = r3.phones[i];
     if (ph.s < P.s - 6 || (ph.taken && ph.anim > 0.35)) { releasePhone(ph); r3.phones.splice(i, 1); continue; }
     ph.t += dt;
-    let sc = 1, h = ph.h + Math.sin(ph.t * 3) * 0.08;
+    let sc = 1, h = ph.h + Math.sin(ph.t * 3) * 0.08, ps = ph.s, px = ph.x;
     if (ph.taken) {
-      const k = ph.anim / 0.35;
-      sc = (1 + k * 0.6) * (1 - k);
-      h += k * 1.6;
+      // Einsammeln: fliegt mit Pork mit über seinen Kopf und schrumpft dort weg
+      // (nicht stehen bleiben, sonst klebt es von hinten gesehen auf seinem Rücken)
+      const k = Math.min(1, ph.anim / 0.35), e = 1 - (1 - k) * (1 - k);
+      ps = r3lerp(ph.s, P.s + 0.4, e);
+      px = r3lerp(ph.x, P.x, e);
+      h = r3lerp(ph.h, P.y + 2.9, e);
+      sc = k < 0.25 ? 1 + k * 1.6 : 1.4 * (1 - (k - 0.25) / 0.75);
     }
-    const q = worldAt(ph.s, ph.x, h, _tv);
+    const q = worldAt(ps, px, h, _tv);
     _phE.set(0.15, q.yaw + Math.PI + Math.sin(ph.t * 2.2) * 0.45, Math.sin(ph.t * 1.7) * 0.12);   // Bildschirm zu Pork, leicht wippend
     _phQ.setFromEuler(_phE);
     _phM.compose(_tv, _phQ, _phS.set(sc, sc, sc));

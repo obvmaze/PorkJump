@@ -286,7 +286,7 @@ button {
 #btnRun { background: #6ee7ff; }
 .btn.ghost { background: #fff4f7; font-size: 18px; padding: 8px 10px 5px; }
 
-/* Trüffel-Konto im Hauptmenü und Shop (oben links) */
+/* Handy-Konto (früher Trüffel) im Hauptmenü und Shop (oben links) */
 .wallet {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));
@@ -303,6 +303,8 @@ button {
   z-index: 30;
 }
 .wallet .truffle-ico { width: 24px; height: 21px; margin-top: -4px; }
+.wallet .phone-ico { width: 17px; height: 29px; border-radius: 5px; border-width: 3px; }
+.price .phone-ico { margin-top: 0; width: 11px; height: 18px; }
 
 /* Shop-Button unter "Start" */
 .shopbtn {
@@ -465,8 +467,8 @@ button {
   height: 22px;
   margin-top: -4px;
   border-radius: 4px;
-  border: 2px solid #1e2236;
-  background: linear-gradient(#ff9ad5, #6a4cff);
+  border: 2px solid #1b1b24;
+  background: linear-gradient(#ffb3c6, #7a6bff);
   box-shadow: 0 0 6px rgba(255, 180, 230, 0.8);
 }
 #r3Hearts { display: flex; gap: 3px; }

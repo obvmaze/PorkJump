@@ -1426,8 +1426,9 @@ const store = {
    2. im dauerhaften Server-Speicher des Spiel-Links (pro Person, übersteht jedes Update).
    Beim Start werden beide zusammengeführt, und zwar so, dass nie etwas verloren geht:
    Zahlen nehmen immer den höheren Wert, Listen (gekaufte Skins) werden vereinigt.
-   Trüffel werden deshalb als "verdient" und "ausgegeben" getrennt gezählt
-   (beide wachsen nur) – Kontostand = verdient − ausgegeben. */
+   Die Währung (früher Trüffel, jetzt Handys) wird deshalb als "verdient" und
+   "ausgegeben" getrennt gezählt (beide wachsen nur).
+   Kontostand = earned (Run, alte Trüffel) + phones (3D Run) − spent. */
 const save = {
   best: store.get('porkjump_best', 0),
   bestRun: store.get('porkjump_best_run', 0),
@@ -1440,7 +1441,8 @@ const save = {
 };
 let best = save.best;
 let bestRun = save.bestRun;
-let truffleBank = save.earned - save.spent;     // Trüffel-Währung über alle Runden
+const walletNow = () => save.earned + save.phones - save.spent;
+let truffleBank = walletNow();                 // Handy-Währung über alle Runden
 let soundOn = store.get('porkjump_sound', true);
 
 function mergeSave(other) {
@@ -1456,7 +1458,7 @@ function mergeSave(other) {
   save.bestPhones = Math.max(save.bestPhones, num(other.bestPhones));
   best = save.best;
   bestRun = save.bestRun;
-  truffleBank = save.earned - save.spent;
+  truffleBank = walletNow();
 }
 
 function saveLocal() {
@@ -2853,14 +2855,25 @@ function setMode(m) {
   for (const id of ['puShoes', 'puBee', 'puHeli', 'puMagnet', 'puShield', 'puTurbo']) show($(id), false);
 }
 
-// Gesammelte Trüffel des laufenden Runs aufs Konto buchen (nur was noch nicht gebucht ist)
+// Gesammelte Handys des laufenden Runs aufs Konto buchen (nur was noch nicht gebucht ist)
 function bankTruffles() {
   if (mode !== 'run' || !run) return;
   const add = run.truffles - (run.banked || 0);
   if (add <= 0) return;
   run.banked = run.truffles;
   save.earned += add;
-  truffleBank = save.earned - save.spent;
+  truffleBank = walletNow();
+  saveProgress();
+}
+
+// 3D Run: Handys schon während der Runde sichern (auch bei Abbruch übers Menü)
+function bankPhones3d() {
+  if (mode !== 'run3d' || !r3) return;
+  const add = r3.phonesN - (r3.banked || 0);
+  if (add <= 0) return;
+  r3.banked = r3.phonesN;
+  save.phones += add;
+  truffleBank = walletNow();
   saveProgress();
 }
 
@@ -2942,7 +2955,7 @@ function gameOver() {
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
   show(el.overExtra, isRun);
-  if (isRun) el.overExtra.textContent = `+${run.truffles} Trüffel (gesamt ${truffleBank})`;
+  if (isRun) el.overExtra.textContent = `+${run.truffles} Handys (gesamt ${truffleBank})`;
   el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${isRun ? bestRun : best} m`;
   el.overBest.classList.toggle('record', isRecord);
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 450);
@@ -2953,20 +2966,20 @@ function gameOver3d() {
   const phones = r3 ? r3.phonesN : 0;
   const isRecord = meters > save.best3d;
   if (isRecord) save.best3d = meters;
-  save.phones += phones;
+  bankPhones3d();
   save.bestPhones = Math.max(save.bestPhones, phones);
   saveProgress();
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
   show(el.overExtra, true);
-  el.overExtra.textContent = `${phones} Handys gesammelt`;
+  el.overExtra.textContent = `+${phones} Handys (gesamt ${truffleBank})`;
   el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${save.best3d} m`;
   el.overBest.classList.toggle('record', isRecord);
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 1300);
 }
 
 function toMenu() {
-  if (mode === 'run3d') { r3Exit(); setMode('classic'); }
+  if (mode === 'run3d') { bankPhones3d(); r3Exit(); setMode('classic'); }
   bankTruffles();
   Sound.stopLoops();
   heliLeave = null;
@@ -3103,7 +3116,7 @@ tap('btnSaveExport', () => {
   } catch (e) { saveMsg('Code markiert, bitte kopieren.'); }
 });
 tap('btnSaveImport', () => {
-  saveMsg(importSave($('saveCode').value) ? `Geladen! Du hast jetzt ${truffleBank} Trüffel.` : 'Der Code stimmt nicht. Bitte komplett kopieren.');
+  saveMsg(importSave($('saveCode').value) ? `Geladen! Du hast jetzt ${truffleBank} Handys.` : 'Der Code stimmt nicht. Bitte komplett kopieren.');
 });
 el.btnPause.addEventListener('pointerdown', e => {
   e.preventDefault();
@@ -3171,8 +3184,8 @@ window.addEventListener('keyup', e => {
 });
 
 // App in den Hintergrund -> automatisch Pause
-document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); bankTruffles(); } });
-window.addEventListener('pagehide', bankTruffles);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); bankTruffles(); bankPhones3d(); } });
+window.addEventListener('pagehide', () => { bankTruffles(); bankPhones3d(); });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
 window.addEventListener('resize', resize);

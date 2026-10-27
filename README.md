@@ -22,16 +22,16 @@ Aktuelle Version: **2.0**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES
 - **3D Run:** 3 Spuren mit Kurven und Hügeln, Sprung-, Slide- und Block-Hindernisse, entgegenkommende Gegner, Handys als eigene Sammel-Statistik, Power-ups **Federschuhe** und **Biene**
 - **11 Comic-Welten**, alle 400 m ein Wechsel in zufälliger Reihenfolge: Strand bei Sonnenaufgang, Zauberwald, Verschneite Berge, Chinesisches Neujahr, Canyon bei Sonnenuntergang, Dunkle Grotte, Land der Süßigkeiten, Giftlabor, Wolkenkönigreich, Polarlichter bei Nacht, Weltall
 - **Classic:** zufällige Plattformen, die mit der Höhe schwerer werden. Gegenstände: **Trampolin** (Mega-Sprung), **Federschuhe** (15 s doppelt so hohe Sprünge, ab und zu ein Salto), **Biene** (trägt dich 3 s nach oben), **Handy** (sehr selten: John Pork ruft an, ein Heli zieht dich 420 m hoch)
-- **Run:** Abgründe, Plattform-Brücken, Hindernisse mit eigenem Look je Welt, 3 Herzen, Trüffel zum Sammeln. Items: **Magnet**, **Schild**, **Sau-Turbo**, **Herz**. Gegner kann man durch Draufspringen besiegen
-- **Trüffel-Währung** über alle Runden (Anzeige im Hauptmenü), **Shop** als Vorschau (Skins kommen bald)
+- **Run:** Abgründe, Plattform-Brücken, Hindernisse mit eigenem Look je Welt, 3 Herzen, Handys zum Sammeln. Items: **Magnet**, **Schild**, **Sau-Turbo**, **Herz**. Gegner kann man durch Draufspringen besiegen
+- **Handy-Währung** über alle Runden und Modi (Anzeige im Hauptmenü): Handys aus Run und 3D Run landen auf einem Konto, alte Trüffel wurden 1:1 zu Handys. **Shop** als Vorschau (Skins kommen bald)
 - Meter-Anzeige, Pause-Menü (Sound an/aus, Hauptmenü), Bestleistungen lokal gespeichert, Rekord-Markierung im Level
 
-## Spielstand (Trüffel, Rekorde, gekaufte Sachen)
+## Spielstand (Handys, Rekorde, gekaufte Sachen)
 
 - Der Spielstand wird doppelt gespeichert: im Browser **und** im dauerhaften Server-Speicher des Spiel-Links, privat pro Person. Updates löschen ihn nicht.
-- Beim Start werden beide zusammengeführt: Zahlen nehmen den höheren Wert, gekaufte Sachen werden vereinigt. Trüffel zählen getrennt als „verdient“ und „ausgegeben“, so geht beim Zusammenführen nichts verloren und nichts wird doppelt gezählt.
+- Beim Start werden beide zusammengeführt: Zahlen nehmen den höheren Wert, gekaufte Sachen werden vereinigt. Die Währung zählt getrennt als „verdient“ und „ausgegeben“, so geht beim Zusammenführen nichts verloren und nichts wird doppelt gezählt.
 - Auf der GitHub-Pages-Seite liegt der Spielstand im Browser des Spielers (Adresse bleibt bei Updates gleich, das Spiel bittet den Browser, die Daten dauerhaft zu behalten). Für ein neues Gerät gibt es in den Einstellungen den **Spielstand-Code** (exportieren / laden, führt verlustfrei zusammen).
-- **Regel für alle Updates:** Speicher-Schlüssel (`porkjump_*` bzw. `best`, `bestRun`, `best3d`, `phones`, `bestPhones`, `earned`, `spent`, `owned`) nie umbenennen oder löschen, nur neue hinzufügen. Käufe immer als `spent` + `owned` speichern.
+- **Regel für alle Updates:** Speicher-Schlüssel (`porkjump_*` bzw. `best`, `bestRun`, `best3d`, `phones`, `bestPhones`, `earned`, `spent`, `owned`) nie umbenennen oder löschen, nur neue hinzufügen. Käufe immer als `spent` + `owned` speichern. Kontostand = `earned` (Run + alte Trüffel) + `phones` (3D Run) − `spent`.
 
 ## Dateien
 

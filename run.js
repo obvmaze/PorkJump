@@ -559,7 +559,7 @@ function runUpdate(dt) {
       run.combo = gameT - (run.lastTruf || -9) < 0.5 ? (run.combo || 0) + 1 : 0;
       run.lastTruf = gameT;
       Sound.truffle(run.combo);
-      particles.push({ x: t.x, y: t.y, vx: 0, vy: -80, life: 0.35, max: 0.35, r: 3, color: '#ffd23f' });
+      particles.push({ x: t.x, y: t.y, vx: 0, vy: -80, life: 0.35, max: 0.35, r: 3, color: '#ffb3e6' });
     }
   }
 
@@ -570,7 +570,7 @@ function runUpdate(dt) {
       it.taken = true;
       sparkle(it.x, it.y);
       Sound.pickup();
-      if (it.type === 'magnet') { run.magnet = R.MAGNET_T; runPopup(it.x, it.y - 30, 'Trüffel-Magnet!', '#ff6b6b'); }
+      if (it.type === 'magnet') { run.magnet = R.MAGNET_T; runPopup(it.x, it.y - 30, 'Handy-Magnet!', '#ff6b6b'); }
       else if (it.type === 'shield') { run.shield = true; runPopup(it.x, it.y - 30, 'Schutzschild!', '#6ee7ff'); }
       else if (it.type === 'turbo') {
         run.turbo = R.TURBO_T;
@@ -579,7 +579,7 @@ function runUpdate(dt) {
         runPopup(it.x, it.y - 30, 'SAU-TURBO!', '#ffd23f');
       } else if (it.type === 'heart') {
         if (run.hearts < R.HEARTS) { run.hearts++; Sound.heal(); runPopup(it.x, it.y - 30, '+1 Herz', '#ff4d6d'); }
-        else { run.truffles += 10; runPopup(it.x, it.y - 30, '+10 Trüffel', '#ffd23f'); }
+        else { run.truffles += 10; runPopup(it.x, it.y - 30, '+10 Handys', '#ffd23f'); }
       }
     }
   }
@@ -679,24 +679,50 @@ function drawRunGround(seg) {
   ctx.stroke();
 }
 
+// Handy = Währung im Run (gleiches Modell wie das Handy in Classic).
+// Wird einmal als Bild vorbereitet, damit viele Handys pro Bild nichts kosten.
+let phoneSprite = null;
+function getPhoneSprite() {
+  if (phoneSprite) return phoneSprite;
+  const Q = 3, R0 = 20;
+  const c = document.createElement('canvas');
+  c.width = c.height = R0 * 2 * Q;
+  const g = c.getContext('2d');
+  g.scale(Q, Q);
+  g.translate(R0, R0);
+  glow(g, 0, 0, R0, 'rgba(120,255,160,0.5)');
+  g.scale(0.78, 0.78);
+  g.fillStyle = '#1b1b24';
+  g.strokeStyle = '#2a1520';
+  g.lineWidth = 2;
+  rr(g, -7, -12, 14, 24, 3.5);
+  g.fill();
+  g.stroke();
+  const sg = g.createLinearGradient(0, -10, 0, 10);
+  sg.addColorStop(0, '#ffb3c6');
+  sg.addColorStop(1, '#7a6bff');
+  g.fillStyle = sg;
+  rr(g, -5.5, -9.5, 11, 18, 2);
+  g.fill();
+  g.fillStyle = '#f2c3c8';
+  circle(g, 0, -4, 2.6);
+  g.fillStyle = '#26d07c';
+  circle(g, 2.8, 5, 2);
+  g.fillStyle = '#ff4d4d';
+  circle(g, -2.8, 5, 2);
+  phoneSprite = c;
+  return c;
+}
+
 function drawTruffle(x, y, phase) {
-  const bob = Math.sin(gameT * 4 + phase) * 2;
-  y += bob;
-  glow(ctx, x, y, 14, 'rgba(255,215,120,0.35)');
-  ctx.fillStyle = '#4a2c18';
-  ctx.strokeStyle = '#2a1810';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.arc(x - 2.5, y + 1, 5, 0, Math.PI * 2);
-  ctx.arc(x + 2.5, y, 5.5, 0, Math.PI * 2);
-  ctx.arc(x, y - 3, 4.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#7a5232';
-  circle(ctx, x - 1.5, y - 3, 1.6);
-  circle(ctx, x + 3, y + 1, 1.2);
-  ctx.fillStyle = 'rgba(255,240,200,0.8)';
-  const tw = Math.abs(Math.sin(gameT * 3 + x));
-  circle(ctx, x - 3, y - 4, 0.9 + tw);
+  const img = getPhoneSprite();
+  y += Math.sin(gameT * 4 + phase) * 2;
+  const tilt = Math.sin(gameT * 2.5 + phase) * 0.12;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+  ctx.drawImage(img, -20, -20, 40, 40);
+  ctx.restore();
 }
 
 function drawRunItem(it) {
