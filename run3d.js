@@ -1853,11 +1853,11 @@ const OBS = {
   barrier: { hw: 0.95, hd: 0.22, bottom: 0, top: 0.88, lethal: false },   // Trefferzone etwas kleiner als das Modell
   crates: { hw: 0.95, hd: 0.5, bottom: 0, top: 0.92, lethal: false },
   gate: { hw: 1.15, hd: 0.25, bottom: 1.12, top: 9, lethal: false },
-  kiosk: { hw: 1.05, hd: 1.1, bottom: 0, top: 9, lethal: true },
-  container: { hw: 1.05, hd: 1.1, bottom: 0, top: 9, lethal: true },
+  kiosk: { hw: 1.05, hd: 1.1, bottom: 0, top: 2.1, lethal: true },        // mit Federschuhen überspringbar
+  container: { hw: 1.05, hd: 1.1, bottom: 0, top: 2.3, lethal: true },
   crab: { hw: 0.85, hd: 0.6, bottom: 0, top: 0.9, lethal: false, speed: 4.5 },
   gull: { hw: 0.7, hd: 0.45, bottom: 1.05, top: 1.75, lethal: false, speed: 6 },
-  buggy: { hw: 1.0, hd: 1.4, bottom: 0, top: 9, lethal: true, speed: 8 }
+  buggy: { hw: 1.0, hd: 1.4, bottom: 0, top: 2.4, lethal: true, speed: 8 }
 };
 const BLOCKS = new Set(['kiosk', 'container', 'buggy']);
 
