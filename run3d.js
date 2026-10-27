@@ -268,21 +268,34 @@ function makeTextures() {
       g.stroke();
     }
   }, true);
+  // Büffelkaro (rot/schwarz) wie auf dem Charakterbogen
   T.plaid = canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = '#a3243a';
+    const r = rng(11);
+    g.fillStyle = '#c2262f';
     g.fillRect(0, 0, w, h);
-    g.fillStyle = 'rgba(55,6,18,0.55)';
-    for (let k = 0; k < w; k += 32) { g.fillRect(k, 0, 12, h); g.fillRect(0, k, w, 12); }
-    g.fillStyle = 'rgba(255,190,190,0.25)';
-    for (let k = 20; k < w; k += 32) { g.fillRect(k, 0, 2, h); g.fillRect(0, k, w, 2); }
+    g.fillStyle = 'rgba(16,8,10,0.58)';
+    for (let k = 0; k < w; k += 32) { g.fillRect(k, 0, 16, h); g.fillRect(0, k, w, 16); }
+    for (let i = 0; i < 900; i++) { g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,170,170,0.08)'; g.fillRect(r() * w, r() * h, 1, 1); }
   }, true);
   T.plaid.repeat.set(2, 2);
-  T.denim = canvasTex(64, 64, (g, w, h) => {
-    const r = rng(3);
-    g.fillStyle = '#3e6aad';
+  T.plaidBody = T.plaid.clone();
+  T.plaidBody.needsUpdate = true;
+  T.plaidBody.repeat.set(7, 3);
+  // grau melierter Stoff (T-Shirt) und dunkle Cargo-Hose
+  T.tee = canvasTex(64, 64, (g, w, h) => {
+    const r = rng(5);
+    g.fillStyle = '#585b62';
     g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 500; i++) { g.fillStyle = r() < 0.5 ? 'rgba(20,40,90,0.25)' : 'rgba(150,180,230,0.2)'; g.fillRect(r() * w, r() * h, 1, 2); }
+    for (let i = 0; i < 600; i++) { g.fillStyle = r() < 0.5 ? 'rgba(40,42,48,0.18)' : 'rgba(200,204,212,0.16)'; g.fillRect(r() * w, r() * h, 1, 1); }
   }, true);
+  T.tee.repeat.set(4, 4);
+  T.cargo = canvasTex(64, 64, (g, w, h) => {
+    const r = rng(3);
+    g.fillStyle = '#3a3a3f';
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 700; i++) { g.fillStyle = r() < 0.5 ? 'rgba(10,10,14,0.25)' : 'rgba(120,120,130,0.14)'; g.fillRect(r() * w, r() * h, 1, 2); }
+  }, true);
+  T.cargo.repeat.set(3, 3);
   T.stripes = canvasTex(128, 32, (g, w, h) => {
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, w, h);
@@ -609,20 +622,27 @@ function makeFarRing() {
 function makeMaterials() {
   const M = {};
   const std = (color, rough = 0.7, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: 0 }, extra));
-  M.skin = std('#eea6b4', 0.55, { emissive: '#4a141e', emissiveIntensity: 0.12 });
-  M.snout = std('#f3b4c0', 0.5, { emissive: '#4a141e', emissiveIntensity: 0.1 });
-  M.ear = std('#e292a2', 0.6);
-  M.earIn = std('#cf8592', 0.7);
+  // John Pork (Charakterbogen): pfirsichfarbene Haut, rosa Rüssel
+  M.skin = std('#e6ac8f', 0.55, { emissive: '#4a1e10', emissiveIntensity: 0.1 });
+  M.snout = std('#ec9a96', 0.45, { emissive: '#4a1414', emissiveIntensity: 0.1 });
+  M.ear = std('#dfa486', 0.6, { emissive: '#4a1e10', emissiveIntensity: 0.08 });
+  M.brow = std('#cf9579', 0.75);
+  M.nostril = std('#5a2428', 0.6);
+  M.mouth = std('#4a1a20', 0.6);
+  M.teeth = std('#fbf6ee', 0.35);
+  M.tongue = std('#e0707e', 0.4);
   M.dark = std('#2a1a20', 0.4);
-  M.eye = std('#140c10', 0.15, { metalness: 0.2 });
+  M.eye = std('#120c0c', 0.12, { metalness: 0.2 });
   M.white = std('#ffffff', 0.4);
   M.plaid = std('#ffffff', 0.85, { map: E.tex.plaid });
-  M.shirt = std('#8e9299', 0.9, { side: THREE.DoubleSide });
-  M.denim = std('#ffffff', 0.85, { map: E.tex.denim });
-  M.shoe = std('#f6f6f6', 0.5);
-  M.sole = std('#c9c3c8', 0.7);
-  M.belt = std('#4a2c1d', 0.6);
-  M.blush = std('#f19aa8', 0.6, { transparent: true, opacity: 0.55 });
+  M.plaidBody = std('#ffffff', 0.85, { map: E.tex.plaidBody, side: THREE.DoubleSide });
+  M.shirt = std('#ffffff', 0.92, { map: E.tex.tee });
+  M.pants = std('#ffffff', 0.9, { map: E.tex.cargo });
+  M.pantsDark = std('#2b2b30', 0.9);
+  M.button = std('#c9b89a', 0.5);
+  M.shoe = std('#2c3242', 0.55);
+  M.sole = std('#f2efe8', 0.7);
+  M.lace = std('#f6f3ee', 0.6);
   M.metal = std('#c9d3df', 0.25, { metalness: 0.85 });
   M.planks = std('#ffffff', 0.85, { map: E.tex.planks });
   M.sand = new THREE.MeshStandardMaterial({ color: '#ffffff', map: E.tex.sand, roughness: 0.95, metalness: 0, vertexColors: true });
@@ -673,11 +693,14 @@ function makeMaterials() {
 
 /* =========================================================
    JOHN PORK 3D
-   Nach dem Original-Meme bzw. der 2D-Figur: runder, glatter,
-   hellrosa Kopf, seitliche Schlappohren, kleine ruhige Augen,
-   großer runder Rüssel, breites Grinsen, graues Shirt unter
-   offenem rot karierten Flanellhemd, Jeans, weiße Sneaker.
+   Nach dem Charakterbogen: kleiner, rundlicher Kerl mit großem,
+   kahlem Kopf, pfirsichfarbener Haut, langen Schlappohren, die an
+   den Kopfseiten herunterhängen, vorstehendem rosa Rüssel, kleinen
+   dunklen Augen und breitem Grinsen mit Zähnen. Offenes rot-schwarzes
+   Büffelkaro-Hemd mit hochgekrempelten Ärmeln über grauem Shirt,
+   dunkle Cargohose, dunkle Sneaker mit weißer Sohle und Schnürsenkeln.
    ========================================================= */
+const PORK_HIP = 0.8;      // Hüfthöhe im Stand
 function buildPork() {
   const M = E.mat;
   const add = (parent, geo, mat, x = 0, y = 0, z = 0, cast = true) => {
@@ -687,122 +710,265 @@ function buildPork() {
     parent.add(m);
     return m;
   };
+  const keep = m => { m.userData.keep = true; return m; };
   const P = {};
   P.root = new THREE.Group();          // steht auf dem Boden, dreht mit der Strecke
   P.body = new THREE.Group();          // Hüfte: Neigen, Rollen, Bob
-  P.body.position.y = 0.9;
+  P.body.position.y = PORK_HIP;
   P.root.add(P.body);
 
-  // Becken + Gürtel
-  add(P.body, new THREE.CapsuleGeometry(0.27, 0.06, 6, 16), M.denim, 0, 0.02, 0);
-  const belt = add(P.body, new THREE.CylinderGeometry(0.285, 0.285, 0.06, 20, 1, true), M.belt, 0, 0.1, 0);
-  belt.material = M.belt;
-  // Oberkörper: Flanell, vorne offen mit grauem Shirt
+  // Becken (Cargohose)
+  const pelvis = add(P.body, new THREE.SphereGeometry(0.31, 24, 16), M.pants, 0, 0.0, 0);
+  pelvis.scale.set(1.04, 0.62, 0.86);
+
+  // Oberkörper: runder Bauch im grauen Shirt, offenes Karohemd darüber
   P.torso = new THREE.Group();
-  P.torso.position.y = 0.08;
+  P.torso.position.y = 0.06;
   P.body.add(P.torso);
-  add(P.torso, new THREE.CapsuleGeometry(0.29, 0.3, 8, 20), M.plaid, 0, 0.3, 0);
-  add(P.torso, new THREE.CylinderGeometry(0.296, 0.29, 0.5, 16, 1, true, -0.36, 0.72), M.shirt, 0, 0.3, 0.002);
-  for (const d of [-1, 1]) {      // Hemdkragen
-    const col = add(P.torso, new THREE.BoxGeometry(0.12, 0.13, 0.03), M.plaid, d * 0.09, 0.6, 0.2);
-    col.rotation.set(-0.4, 0, d * 0.5);
+  const prof = [[0.29, -0.13], [0.33, -0.02], [0.36, 0.12], [0.358, 0.26], [0.335, 0.4], [0.29, 0.51], [0.21, 0.59], [0.13, 0.635], [0.001, 0.65]];
+  const tee = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 32);
+  tee.scale(1, 1, 0.84);
+  add(P.torso, tee, M.shirt);
+  const shellPts = [[0.352, -0.15], [0.36, -0.08], [0.38, 0.12], [0.376, 0.26], [0.352, 0.4], [0.305, 0.515], [0.225, 0.6]];
+  const shell = new THREE.LatheGeometry(shellPts.map(([r, y]) => new THREE.Vector2(r, y)), 32, 0.3, Math.PI * 2 - 0.6);
+  shell.scale(1, 1, 0.84);
+  add(P.torso, shell, M.plaidBody);
+  // Knopfleisten an der Hemdöffnung
+  for (const d of [-1, 1]) {
+    for (let i = 0; i < 5; i++) {
+      const y = -0.15 + i * 0.135;
+      const r = y < 0.12 ? 0.36 + (y + 0.1) * 0.09 : 0.38 - (y - 0.12) * 0.22;
+      const b = add(P.torso, new THREE.BoxGeometry(0.035, 0.135, 0.02), M.plaid, d * Math.sin(0.3) * r, y + 0.065, Math.cos(0.3) * r * 0.84 + 0.004, false);
+      b.rotation.y = d * 0.3;
+    }
   }
-  // Hals + Kopf
-  add(P.torso, new THREE.CylinderGeometry(0.11, 0.13, 0.14, 14), M.skin, 0, 0.66, 0);
+  // Brusttasche (Porks linke Seite = +x)
+  const pocket = add(P.torso, new THREE.BoxGeometry(0.12, 0.13, 0.02), M.plaid, 0.2, 0.33, 0.235, false);
+  pocket.rotation.y = 0.62;
+  // Kragen: Band im Nacken + zwei Spitzen vorne
+  const band = add(P.torso, new THREE.TorusGeometry(0.17, 0.035, 8, 24, Math.PI * 1.3), M.plaid, 0, 0.6, -0.01);
+  band.rotation.set(Math.PI / 2, 0, Math.PI * 1.35 - Math.PI);
+  band.scale.set(1, 0.85, 1);
+  for (const d of [-1, 1]) {
+    const col = add(P.torso, new THREE.BoxGeometry(0.13, 0.15, 0.025), M.plaid, d * 0.13, 0.55, 0.17);
+    col.rotation.set(-0.55, d * 0.45, d * 0.6);
+  }
+  // dicker Hals
+  add(P.torso, new THREE.CylinderGeometry(0.15, 0.17, 0.16, 18), M.skin, 0, 0.62, 0.0);
+
+  // Kopf
   P.head = new THREE.Group();
-  P.head.position.y = 0.7;
+  P.head.position.y = 0.64;
   P.torso.add(P.head);
-  const headGeo = new THREE.SphereGeometry(0.36, 36, 26);
-  { // leicht breitere Backen unten
+  const HC = 0.34;   // Kopfmitte über dem Halsgelenk
+  const headGeo = new THREE.SphereGeometry(0.34, 44, 32);
+  {
     const pa = headGeo.attributes.position;
     for (let i = 0; i < pa.count; i++) {
-      const y = pa.getY(i);
-      const w = 1 + (y < 0 ? -y / 0.36 * 0.12 : 0);
-      pa.setX(i, pa.getX(i) * w);
-      pa.setZ(i, pa.getZ(i) * (0.95 + (y < 0 ? -y / 0.36 * 0.05 : 0)));
-      pa.setY(i, y * 0.93);
+      let x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
+      const ny = y / 0.34;
+      // unten breiter (Pausbacken, Doppelkinn), oben rund, Gesicht etwas flacher
+      const jowl = ny < 0.1 ? (0.1 - ny) / 1.1 : 0;
+      x *= (1 + jowl * 0.16) * (ny > 0.3 ? 1 - (ny - 0.3) * 0.05 : 1) * 0.97;
+      z *= (z > 0 ? 0.98 + jowl * 0.12 : 0.95);
+      y *= 1.08;
+      // Backen neben dem Mund
+      const cx = Math.abs(x) - 0.19, cy = ny + 0.35;
+      if (z > 0) {
+        const b = Math.exp(-(cx * cx) / 0.006 - (cy * cy) / 0.06);
+        z += b * 0.03; x += Math.sign(x) * b * 0.012;
+      }
+      pa.setXYZ(i, x, y + HC, z);
     }
     headGeo.computeVertexNormals();
   }
-  add(P.head, headGeo, M.skin, 0, 0.32, 0);
-  // Rüssel (groß, rund) mit Nasenlöchern
-  const snout = add(P.head, new THREE.CylinderGeometry(0.15, 0.165, 0.15, 28), M.snout, 0, 0.26, 0.32);
-  snout.rotation.x = Math.PI / 2;
-  const cap = add(P.head, new THREE.SphereGeometry(0.152, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.snout, 0, 0.26, 0.392);
-  cap.rotation.x = Math.PI / 2;
-  cap.scale.set(1, 0.18, 1);
+  const headMesh = add(P.head, headGeo, M.skin);
+  // Hilfe: Punkte/Formen auf die Gesichtsoberfläche legen
+  const ray = new THREE.Raycaster();
+  const _o = new THREE.Vector3(), _d = new THREE.Vector3(0, 0, -1);
+  headMesh.updateMatrixWorld(true);
+  const surfZ = (x, y) => {
+    ray.set(_o.set(x, y, 2), _d);
+    const hit = ray.intersectObject(headMesh, false)[0];
+    return hit ? hit.point.z : 0.3;
+  };
+  const conform = (geo, off) => {
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i++) pa.setZ(i, surfZ(pa.getX(i), pa.getY(i)) + off + pa.getZ(i));
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const shapeMesh = (shape, mat, off) => keep(add(P.head, conform(new THREE.ShapeGeometry(shape, 14), off), mat, 0, 0, 0, false));
+  const surfTube = (pts2, r, mat, off = 0.004) => {
+    const pts = pts2.map(([x, y]) => new THREE.Vector3(x, y, surfZ(x, y) + off));
+    return keep(add(P.head, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, r, 6, false), mat, 0, 0, 0, false));
+  };
+
+  // Rüssel: steht deutlich vor, leicht nach oben gekippt
+  const SY = HC - 0.03, SZ = surfZ(0, HC - 0.03);
+  const snout = new THREE.Group();
+  snout.position.set(0, SY, SZ - 0.05);
+  snout.rotation.x = -0.12;
+  P.head.add(snout);
+  const tube = add(snout, new THREE.CylinderGeometry(0.108, 0.12, 0.15, 30), M.snout, 0, 0, 0.075);
+  tube.rotation.x = Math.PI / 2;
+  tube.scale.set(1, 1, 0.76);
+  const front = add(snout, new THREE.SphereGeometry(0.108, 28, 14), M.snout, 0, 0, 0.15);
+  front.scale.set(1, 0.76, 0.34);
   for (const d of [-1, 1]) {
-    const n = add(P.head, new THREE.SphereGeometry(0.03, 12, 8), M.dark, d * 0.055, 0.265, 0.418, false);
-    n.scale.set(1, 1.5, 0.45);
+    const n = add(snout, new THREE.SphereGeometry(0.022, 12, 10), M.nostril, d * 0.045, 0.002, 0.18, false);
+    n.scale.set(0.85, 1.35, 0.4);
   }
-  // Augen: klein, dunkel, mit halb geschlossenen Lidern (ruhiger Blick)
+
+  // Augen: klein, dunkel, mit Glanzpunkt (Gruppen, damit sie blinzeln können)
+  const EY = HC + 0.075, EX = 0.112;
+  P.face = { eyes: [], shut: [], brows: [], mouths: {} };
   for (const d of [-1, 1]) {
-    add(P.head, new THREE.SphereGeometry(0.04, 16, 12), M.eye, d * 0.125, 0.43, 0.29, false);
-    add(P.head, new THREE.SphereGeometry(0.012, 8, 6), M.white, d * 0.125 + 0.012, 0.445, 0.326, false);
-    const lid = add(P.head, new THREE.SphereGeometry(0.047, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), M.skin, d * 0.125, 0.432, 0.29, false);
-    lid.rotation.x = 0.22;
-    const blush = add(P.head, new THREE.SphereGeometry(0.075, 16, 10), M.blush, d * 0.21, 0.2, 0.245, false);
-    blush.scale.set(1, 0.6, 0.35);
+    const g = new THREE.Group();
+    g.position.set(d * EX, EY, surfZ(d * EX, EY) - 0.012);
+    P.head.add(g);
+    const ball = keep(add(g, new THREE.SphereGeometry(0.033, 16, 12), M.eye, 0, 0, 0, false));
+    ball.scale.set(1, 1.18, 0.7);
+    keep(add(g, new THREE.SphereGeometry(0.009, 8, 6), M.white, 0.011, 0.014, 0.022, false));
+    g.userData.d = d;
+    P.face.eyes.push(g);
+    // geschlossenes, fröhliches Auge (Bogen)
+    P.face.shut.push(surfTube([[d * EX - 0.036, EY - 0.008], [d * EX, EY + 0.014], [d * EX + 0.036, EY - 0.008]], 0.008, M.mouth));
+    // Augenbrauen (dezent, wie auf dem Bogen)
+    const bg = new THREE.Group();
+    const bx = d * (EX + 0.005), by = EY + 0.07;
+    bg.position.set(bx, by, surfZ(bx, by) + 0.002);
+    bg.rotation.y = d * 0.32;
+    P.head.add(bg);
+    const brow = keep(add(bg, new THREE.CapsuleGeometry(0.008, 0.05, 4, 8), M.brow, 0, 0, 0, false));
+    brow.scale.z = 0.5;
+    brow.rotation.z = Math.PI / 2;
+    bg.userData.d = d; bg.userData.y = by;
+    P.face.brows.push(bg);
   }
-  // breites, entspanntes Grinsen
-  const smileCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.17, 0.14, 0.255), new THREE.Vector3(-0.09, 0.105, 0.293),
-    new THREE.Vector3(0, 0.095, 0.305), new THREE.Vector3(0.09, 0.105, 0.293), new THREE.Vector3(0.17, 0.14, 0.255)
-  ]);
-  add(P.head, new THREE.TubeGeometry(smileCurve, 24, 0.011, 6, false), M.dark, 0, 0, 0, false);
-  // Schlappohren (stehen seitlich ab)
+
+  // Münder für die Gesichtsausdrücke
+  const MY = HC - 0.165;
+  const mk = () => new THREE.Shape();
+  { // ruhiges Grinsen mit oberen Zähnen (Standard)
+    const s = mk(); s.moveTo(-0.145, MY + 0.03); s.quadraticCurveTo(0, MY - 0.02, 0.145, MY + 0.03); s.quadraticCurveTo(0, MY - 0.078, -0.145, MY + 0.03);
+    const t = mk(); t.moveTo(-0.098, MY + 0.011); t.quadraticCurveTo(0, MY - 0.026, 0.098, MY + 0.011); t.quadraticCurveTo(0, MY - 0.044, -0.098, MY + 0.011);
+    const g = new THREE.Group(); P.head.add(g);
+    g.add(shapeMesh(s, M.mouth, 0.003)); g.add(shapeMesh(t, M.teeth, 0.005));
+    P.face.mouths.smile = g;
+  }
+  { // breites, offenes Lachen
+    const s = mk(); s.moveTo(-0.15, MY + 0.035); s.quadraticCurveTo(0, MY + 0.0, 0.15, MY + 0.035); s.bezierCurveTo(0.12, MY - 0.1, -0.12, MY - 0.1, -0.15, MY + 0.035);
+    const t = mk(); t.moveTo(-0.112, MY + 0.02); t.quadraticCurveTo(0, MY - 0.006, 0.112, MY + 0.02); t.lineTo(0.104, MY - 0.004); t.quadraticCurveTo(0, MY - 0.03, -0.104, MY - 0.004); t.closePath();
+    const tg = mk(); tg.absellipse(0, MY - 0.052, 0.058, 0.022, 0, Math.PI * 2);
+    const g = new THREE.Group(); P.head.add(g);
+    g.add(shapeMesh(s, M.mouth, 0.003)); g.add(shapeMesh(t, M.teeth, 0.005)); g.add(shapeMesh(tg, M.tongue, 0.005));
+    P.face.mouths.grin = g;
+  }
+  { // "Oh!" (Schreck)
+    const s = mk(); s.absellipse(0, MY - 0.02, 0.036, 0.046, 0, Math.PI * 2);
+    const g = new THREE.Group(); P.head.add(g);
+    g.add(shapeMesh(s, M.mouth, 0.003));
+    P.face.mouths.oh = g;
+  }
+  { // Zunge raus (Game Over)
+    const s = mk(); s.moveTo(-0.13, MY + 0.025); s.quadraticCurveTo(0, MY - 0.015, 0.13, MY + 0.025); s.quadraticCurveTo(0, MY - 0.06, -0.13, MY + 0.025);
+    const g = new THREE.Group(); P.head.add(g);
+    g.add(shapeMesh(s, M.mouth, 0.003));
+    const tz = surfZ(0.02, MY - 0.03);
+    const tongue = keep(add(g, new THREE.SphereGeometry(0.05, 16, 12), M.tongue, 0.025, MY - 0.045, tz + 0.012, false));
+    tongue.scale.set(0.95, 1.25, 0.42);
+    tongue.rotation.set(-0.5, 0, -0.2);
+    P.face.mouths.tongue = g;
+  }
+  { // entschlossen (Rutschen)
+    const g = new THREE.Group(); P.head.add(g);
+    g.add(surfTube([[-0.09, MY - 0.004], [-0.03, MY + 0.006], [0.03, MY + 0.006], [0.09, MY - 0.004]], 0.009, M.mouth));
+    P.face.mouths.flat = g;
+  }
+
+  // Schlappohren: oben seitlich angesetzt, hängen am Kopf herunter
   P.ears = [];
+  const earGeo = new THREE.SphereGeometry(1, 24, 18);
+  {
+    const pa = earGeo.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
+      const wide = 0.62 + 0.42 * (1 - (y + 1) / 2);          // unten breiter
+      pa.setXYZ(i, x * 0.045 + (y * y) * 0.03 - 0.015, y * 0.3 - 0.25, z * 0.15 * wide + 0.03 * (1 - y));
+    }
+    earGeo.computeVertexNormals();
+  }
   for (const d of [-1, 1]) {
     const ear = new THREE.Group();
-    ear.position.set(d * 0.29, 0.47, -0.03);
+    ear.position.set(d * 0.25, HC + 0.25, 0.0);
     P.head.add(ear);
-    const outer = add(ear, new THREE.SphereGeometry(0.17, 18, 12), M.ear, d * 0.12, -0.03, 0);
-    outer.scale.set(1, 0.3, 1.2);
-    outer.rotation.z = d * -0.75;
-    const inner = add(ear, new THREE.SphereGeometry(0.12, 16, 10), M.earIn, d * 0.13, 0.0, 0.03, false);
-    inner.scale.set(1, 0.17, 1.1);
-    inner.rotation.z = d * -0.75;
+    const m = add(ear, earGeo, M.ear, 0, 0, 0);
+    m.scale.x = d;                    // spiegeln
+    m.rotation.y = -d * 0.5;          // breite Seite etwas nach vorne
+    if (d < 0) { m.geometry = earGeo.clone(); const pa = m.geometry.attributes.position; for (let i = 0; i < pa.count; i++) pa.setX(i, -pa.getX(i)); m.geometry.computeVertexNormals(); m.scale.x = 1; }
     ear.userData.d = d;
     P.ears.push(ear);
   }
-  // Arme (Flanell-Ärmel, rosa Hände)
+
+  // Arme: Karo-Ärmel, hochgekrempelt, kräftige Unterarme
   const arm = d => {
     const sh = new THREE.Group();
-    sh.position.set(d * 0.35, 0.55, 0);
+    sh.position.set(d * 0.37, 0.5, -0.01);
     P.torso.add(sh);
-    add(sh, new THREE.CapsuleGeometry(0.085, 0.2, 6, 12), M.plaid, 0, -0.17, 0);
+    add(sh, new THREE.SphereGeometry(0.105, 16, 12), M.plaid, 0, -0.01, 0);
+    add(sh, new THREE.CapsuleGeometry(0.1, 0.16, 6, 14), M.plaid, 0, -0.15, 0);
     const el = new THREE.Group();
-    el.position.y = -0.34;
+    el.position.y = -0.29;
     sh.add(el);
-    add(el, new THREE.CapsuleGeometry(0.076, 0.17, 6, 12), M.plaid, 0, -0.15, 0);
-    add(el, new THREE.SphereGeometry(0.095, 16, 12), M.skin, 0, -0.32, 0.01);
+    add(el, new THREE.CylinderGeometry(0.1, 0.098, 0.1, 16), M.plaid, 0, -0.04, 0);              // Umschlag
+    add(el, new THREE.TorusGeometry(0.096, 0.016, 6, 18), M.plaid, 0, -0.088, 0).rotation.x = Math.PI / 2;
+    add(el, new THREE.CapsuleGeometry(0.074, 0.12, 6, 12), M.skin, 0, -0.16, 0.005);
+    const hand = add(el, new THREE.SphereGeometry(0.085, 16, 12), M.skin, 0, -0.29, 0.012);
+    hand.scale.set(0.82, 1.12, 0.95);
+    add(el, new THREE.SphereGeometry(0.036, 10, 8), M.skin, d * -0.045, -0.26, 0.06);           // Daumen
     return { sh, el };
   };
   P.armL = arm(1);   // +x = Porks linke Seite
   P.armR = arm(-1);
-  // Beine (Jeans) mit Sneakern + Federn (nur mit Federschuhen sichtbar)
+
+  // Beine: weite Cargohose mit Seitentaschen, dunkle Sneaker
   const leg = d => {
     const hip = new THREE.Group();
-    hip.position.set(d * 0.13, 0, 0);
+    hip.position.set(d * 0.15, 0, 0);
     P.body.add(hip);
-    add(hip, new THREE.CapsuleGeometry(0.105, 0.22, 6, 12), M.denim, 0, -0.2, 0);
+    add(hip, new THREE.CapsuleGeometry(0.138, 0.2, 6, 14), M.pants, 0, -0.19, 0);
+    // Cargotasche mit Klappe und Knopf
+    add(hip, new THREE.BoxGeometry(0.03, 0.14, 0.1), M.pants, d * 0.128, -0.27, 0, false);
+    add(hip, new THREE.BoxGeometry(0.036, 0.04, 0.11), M.pantsDark, d * 0.13, -0.205, 0, false);
+    add(hip, new THREE.SphereGeometry(0.011, 6, 5), M.button, d * 0.15, -0.21, 0, false);
     const knee = new THREE.Group();
-    knee.position.y = -0.4;
+    knee.position.y = -0.36;
     hip.add(knee);
-    add(knee, new THREE.CapsuleGeometry(0.092, 0.22, 6, 12), M.denim, 0, -0.18, 0);
+    add(knee, new THREE.CapsuleGeometry(0.128, 0.16, 6, 14), M.pants, 0, -0.15, 0);
+    add(knee, new THREE.CylinderGeometry(0.128, 0.134, 0.06, 16), M.pants, 0, -0.28, 0.005);   // Hosenbund unten
     const foot = new THREE.Group();
-    foot.position.y = -0.4;
+    foot.position.y = -0.34;
     knee.add(foot);
-    const shoe = add(foot, new THREE.CapsuleGeometry(0.085, 0.17, 6, 12), M.shoe, 0, -0.04, 0.06);
+    const shoe = add(foot, new THREE.CapsuleGeometry(0.095, 0.16, 6, 14), M.shoe, 0, -0.025, 0.06);
     shoe.rotation.x = Math.PI / 2;
-    shoe.scale.set(1.05, 1, 0.75);
-    add(foot, new THREE.BoxGeometry(0.18, 0.035, 0.34), M.sole, 0, -0.095, 0.06);
-    const stripe = add(foot, new THREE.BoxGeometry(0.19, 0.025, 0.14), M.red, 0, -0.04, 0.05, false);
-    stripe.rotation.x = 0.35;
+    shoe.scale.set(1.1, 1, 0.95);
+    add(foot, new THREE.CylinderGeometry(0.085, 0.1, 0.08, 14), M.shoe, 0, 0.04, -0.02);   // Knöchelkragen
+    const sole = add(foot, new THREE.CapsuleGeometry(0.1, 0.19, 4, 14), M.sole, 0, -0.08, 0.065);
+    sole.rotation.x = Math.PI / 2;
+    sole.scale.set(1.08, 1, 0.26);
+    for (let i = 0; i < 3; i++) {   // Schnürsenkel
+      const l = add(foot, new THREE.BoxGeometry(0.1, 0.014, 0.018), M.lace, 0, 0.058 - i * 0.016, 0.03 + i * 0.045, false);
+      l.rotation.x = -0.35;
+    }
+    for (const sd of [-1, 1]) {      // weißer Seitenstreifen
+      const st = add(foot, new THREE.BoxGeometry(0.012, 0.022, 0.13), M.lace, sd * 0.1, -0.03, 0.06, false);
+      st.rotation.x = 0.45;
+    }
     // Feder unter dem Schuh
     const pts = [];
     for (let i = 0; i <= 60; i++) { const a = i / 60 * Math.PI * 8; pts.push(new THREE.Vector3(Math.cos(a) * 0.07, -i / 60 * 0.22, Math.sin(a) * 0.07)); }
-    const spring = add(foot, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.014, 6, false), M.metal, 0, -0.11, 0.06);
+    const spring = add(foot, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.014, 6, false), M.metal, 0, -0.1, 0.06);
     spring.visible = false;
     spring.userData.keep = true;
     return { hip, knee, foot, spring };
@@ -822,12 +988,38 @@ function buildPork() {
   P.root.add(P.stars);
   // getragene Biene (Flug)
   P.bee = buildBee(1.6);
-  P.bee.position.set(0, 2.55, 0);
+  P.bee.position.set(0, 2.62, 0);
   P.bee.visible = false;
   P.root.add(P.bee);
-  for (const g of [P.body, P.torso, P.head, ...P.ears, P.armL.sh, P.armL.el, P.armR.sh, P.armR.el,
+  for (const g of [P.body, P.torso, P.head, snout, ...P.ears, P.armL.sh, P.armL.el, P.armR.sh, P.armR.el,
     P.legL.hip, P.legL.knee, P.legL.foot, P.legR.hip, P.legR.knee, P.legR.foot]) mergeStatic(g);
+  P.expr = '';
+  setPorkExpr(P, 'smile');
   return P;
+}
+
+// Gesichtsausdrücke (wie auf dem Bogen): smile, grin, happy, wink, oh, angry, dizzy
+const EXPR = {
+  smile: { mouth: 'smile', eyes: [1, 1], brow: 0 },
+  grin:  { mouth: 'grin',  eyes: [1, 1], brow: 0.3 },
+  happy: { mouth: 'grin',  eyes: [0, 0], brow: 0.4 },
+  wink:  { mouth: 'grin',  eyes: [1, 0], brow: 0.3 },
+  oh:    { mouth: 'oh',    eyes: [1, 1], brow: 1 },
+  angry: { mouth: 'flat',  eyes: [1, 1], brow: -1 },
+  dizzy: { mouth: 'tongue', eyes: [0, 0], brow: 0.2 }
+};
+function setPorkExpr(D, name) {
+  if (D.expr === name) return;
+  D.expr = name;
+  const e = EXPR[name];
+  for (const k in D.face.mouths) D.face.mouths[k].visible = k === e.mouth;
+  D.face.eyes.forEach((g, i) => { g.visible = !!e.eyes[i]; });
+  D.face.shut.forEach((m, i) => { m.visible = !e.eyes[i]; });
+  for (const b of D.face.brows) {
+    const d = b.userData.d;
+    b.position.y = b.userData.y + e.brow * 0.018 - (e.brow < 0 ? 0.012 : 0);
+    b.rotation.z = e.brow < 0 ? -d * 0.38 : d * 0.08 * e.brow;
+  }
 }
 
 function buildBee(scale) {
@@ -882,81 +1074,90 @@ function buildBee(scale) {
 }
 
 /* ---------- Pose & Animation ---------- */
-const POSE_KEYS = ['hipsY', 'pitch', 'roll', 'yaw', 'thL', 'knL', 'thR', 'knR', 'ftL', 'ftR', 'shL', 'shLz', 'elL', 'shR', 'shRz', 'elR', 'headP', 'headR', 'ear'];
-function zeroPose() { const p = {}; for (const k of POSE_KEYS) p[k] = 0; p.hipsY = 0.9; return p; }
+// ear = Ohren abspreizen (+ = nach außen/oben), earB = Ohren nach hinten wehen
+const POSE_KEYS = ['hipsY', 'pitch', 'roll', 'yaw', 'thL', 'knL', 'thR', 'knR', 'ftL', 'ftR', 'shL', 'shLz', 'elL', 'shR', 'shRz', 'elR', 'headP', 'headR', 'ear', 'earB', 'belly'];
+function zeroPose() { const p = {}; for (const k of POSE_KEYS) p[k] = 0; p.hipsY = PORK_HIP; return p; }
 
 function porkTargetPose(p, t, out) {
   const P = r3.pl;
   for (const k of POSE_KEYS) out[k] = 0;
-  out.hipsY = 0.9;
+  out.hipsY = PORK_HIP;
   const spd = r3.speed;
   if (P.dead) {
     const k = Math.min(1, P.deadT / 0.45);
     out.pitch = -1.45 * smooth01(k);
-    out.hipsY = r3lerp(0.9, 0.36, smooth01(k));
+    out.hipsY = r3lerp(PORK_HIP, 0.36, smooth01(k));
     out.thL = 1.0; out.thR = 0.6; out.knL = 0.3; out.knR = 0.5;
     out.shL = -1.6; out.shR = -1.4; out.shLz = 0.9; out.shRz = 0.9; out.elL = 0.4; out.elR = 0.4;
-    out.headP = 0.3;
-    out.ear = 0.6;
+    out.headP = 0.3; out.headR = 0.25;
+    out.ear = 0.9;
     return out;
   }
-  if (P.beeT > 0) {   // hängt an der Biene: Arme hoch, Beine baumeln
-    out.shL = -2.95; out.shR = -2.95; out.shLz = -0.18; out.shRz = -0.18;
+  if (P.beeT > 0) {   // hängt an der Biene: Arme hoch, kurze Beine strampeln
+    out.shL = -2.95; out.shR = -2.95; out.shLz = -0.12; out.shRz = -0.12;
     out.elL = 0.15; out.elR = 0.15;
-    out.thL = Math.sin(t * 3.2) * 0.45; out.thR = -Math.sin(t * 3.2) * 0.45;
-    out.knL = 0.5 + Math.sin(t * 3.2 + 1) * 0.3; out.knR = 0.5 - Math.sin(t * 3.2 + 1) * 0.3;
+    out.thL = Math.sin(t * 5) * 0.55; out.thR = -Math.sin(t * 5) * 0.55;
+    out.knL = 0.6 + Math.sin(t * 5 + 1) * 0.4; out.knR = 0.6 - Math.sin(t * 5 + 1) * 0.4;
     out.pitch = 0.08;
     out.roll = Math.sin(t * 1.9) * 0.12;
-    out.headP = -0.15;
-    out.ear = Math.sin(t * 9) * 0.25;
+    out.headP = -0.2;
+    out.ear = 0.7 + Math.sin(t * 9) * 0.25; out.earB = 0.5;
     return out;
   }
-  if (P.slideT > 0 && P.onGround) {   // Rutschen: nach hinten gelehnt, Beine vorne
+  if (P.slideT > 0 && P.onGround) {   // Rutschen: nach hinten gelehnt, Beine vorne, Bauch voraus
     out.pitch = -1.05;
-    out.hipsY = 0.42;
+    out.hipsY = 0.36;
     out.thL = 1.45; out.thR = 1.2; out.knL = 0.15; out.knR = 0.55;
-    out.shL = 0.9; out.shR = 0.7; out.shLz = 0.55; out.shRz = 0.55; out.elL = -0.3; out.elR = -0.3;
-    out.headP = 0.75;
-    out.ear = -0.35;
+    out.shL = 0.9; out.shR = 0.7; out.shLz = 0.6; out.shRz = 0.6; out.elL = -0.3; out.elR = -0.3;
+    out.headP = 0.8;
+    out.ear = 0.35; out.earB = 1.1;
+    out.belly = -0.03;
     return out;
   }
   if (!P.onGround) {
     const up = P.vy > 1.5;
-    if (up) {
-      out.thL = 1.1; out.knL = 1.5; out.thR = -0.35; out.knR = 0.7;
-      out.shL = -2.2; out.shR = -0.4; out.shLz = 0.5; out.shRz = 0.45; out.elL = 0.6; out.elR = 1.1;
-      out.pitch = 0.08;
-      out.ear = -0.55;
-    } else {
-      out.thL = 0.45; out.knL = 0.5; out.thR = 0.15; out.knR = 0.35;
-      out.shL = -1.2; out.shR = -1.0; out.shLz = 0.7; out.shRz = 0.7; out.elL = 0.5; out.elR = 0.5;
-      out.pitch = 0.02;
-      out.ear = 0.35;
+    if (up) {   // Absprung: Knie hoch, ein Arm nach oben
+      out.thL = 1.15; out.knL = 1.6; out.thR = -0.3; out.knR = 0.75;
+      out.shL = -2.3; out.shR = -0.5; out.shLz = 0.45; out.shRz = 0.55; out.elL = 0.5; out.elR = 1.0;
+      out.pitch = 0.06;
+      out.ear = 0.05; out.earB = 0.2;
+      out.belly = 0.035;
+    } else {    // Fallen: Arme raus wie Flügel, Ohren flattern hoch
+      out.thL = 0.45; out.knL = 0.6; out.thR = 0.2; out.knR = 0.45;
+      out.shL = -0.9; out.shR = -0.8; out.shLz = 1.05; out.shRz = 1.05; out.elL = 0.4; out.elR = 0.4;
+      out.pitch = 0.0;
+      out.ear = 1.35 + Math.sin(t * 16) * 0.12; out.earB = 0.1;
+      out.belly = -0.03;
     }
     out.headP = -0.1;
   } else {
-    // Laufzyklus
+    // Laufzyklus: kurze Beine, schnelle Schritte, leichtes Watscheln
     const ph = P.phase;
     const s1 = Math.sin(ph), s2 = Math.sin(ph + Math.PI);
-    const amp = r3clamp(0.75 + spd * 0.012, 0.75, 1.0);
+    const amp = r3clamp(0.62 + spd * 0.012, 0.62, 0.88);
     out.thL = s1 * amp; out.thR = s2 * amp;
-    out.knL = 0.25 + Math.max(0, Math.sin(ph + 1.7)) * 1.3;
-    out.knR = 0.25 + Math.max(0, Math.sin(ph + Math.PI + 1.7)) * 1.3;
+    out.knL = 0.3 + Math.max(0, Math.sin(ph + 1.7)) * 1.35;
+    out.knR = 0.3 + Math.max(0, Math.sin(ph + Math.PI + 1.7)) * 1.35;
     out.ftL = -0.2 + Math.max(0, -s1) * 0.4; out.ftR = -0.2 + Math.max(0, -s2) * 0.4;
-    out.shL = -s2 * 0.8; out.shR = -s1 * 0.8;
-    out.shLz = 0.12; out.shRz = 0.12;
-    out.elL = 1.15; out.elR = 1.15;
-    out.hipsY = 0.86 + Math.abs(Math.cos(ph)) * 0.06 + (P.shoesT > 0 ? Math.abs(Math.cos(ph)) * 0.08 : 0);
-    out.pitch = 0.16;
-    out.yaw = Math.sin(ph) * 0.08;
-    out.headP = -0.1 + Math.sin(ph * 2) * 0.03;
-    out.ear = Math.sin(ph * 2 + 1) * 0.18;
+    out.shL = -s2 * 0.85; out.shR = -s1 * 0.85;
+    out.shLz = 0.1; out.shRz = 0.1;
+    out.elL = 1.25 + s2 * 0.2; out.elR = 1.25 + s1 * 0.2;
+    const bob = Math.abs(Math.cos(ph));
+    out.hipsY = PORK_HIP - 0.05 + bob * 0.07 + (P.shoesT > 0 ? bob * 0.08 : 0);
+    out.pitch = 0.14;
+    out.roll = Math.sin(ph) * 0.07;          // Watscheln
+    out.yaw = Math.sin(ph) * 0.1;
+    out.headP = -0.12 + Math.sin(ph * 2 + 0.6) * 0.035;
+    out.headR = -Math.sin(ph) * 0.05;
+    out.belly = Math.cos(ph * 2) * 0.022;    // Bauch wippt mit
+    out.ear = 0.08; out.earB = 0.25 + spd * 0.02;
   }
-  if (P.landT > 0) {          // Landung: kurz einfedern
+  if (P.landT > 0) {          // Landung: kräftig einfedern
     const k = P.landT / 0.16;
     out.hipsY -= 0.2 * k;
     out.knL += 0.7 * k; out.knR += 0.7 * k;
     out.thL += 0.35 * k; out.thR += 0.35 * k;
+    out.belly -= 0.06 * k;
   }
   // Spurwechsel: in die Richtung lehnen
   out.roll += r3clamp(P.latVel * 0.035, -0.32, 0.32);
@@ -966,8 +1167,21 @@ function porkTargetPose(p, t, out) {
     out.pitch += -0.6 * Math.sin(k * Math.PI);
     out.shL = -2.4 * k; out.shR = -2.0 * k; out.shLz = 1.0 * k; out.shRz = 1.0 * k;
     out.headR = Math.sin(P.hitT * 30) * 0.25 * k;
+    out.ear += 0.6 * k;
   }
   return out;
+}
+
+// Welcher Gesichtsausdruck passt gerade?
+function porkExprFor(P, t) {
+  if (P.forceExpr) return P.forceExpr;
+  if (P.dead) return 'dizzy';
+  if (P.hitT > 0) return 'oh';
+  if (P.happyT > 0) return P.happyT > 0.35 ? 'happy' : 'grin';
+  if (P.beeT > 0 || P.flipT > 0) return 'grin';
+  if (P.slideT > 0) return 'angry';
+  if (!P.onGround && P.vy > 1.5) return 'wink';
+  return 'smile';
 }
 
 const _pose = {};
@@ -983,21 +1197,42 @@ function animatePork(dt, t) {
   if (P.flipT > 0) flip = (1 - P.flipT / P.flipDur) * Math.PI * 2;
   if (P.spinT > 0) spin = (1 - P.spinT / 0.6) * Math.PI * 2;
   D.body.rotation.set(p.pitch + flip, p.yaw + spin, p.roll, 'YXZ');
+  D.torso.scale.set(1 + p.belly, 1 - p.belly, 1 + p.belly * 1.4);
   D.legL.hip.rotation.x = -p.thL;
   D.legR.hip.rotation.x = -p.thR;
   D.legL.knee.rotation.x = p.knL;
   D.legR.knee.rotation.x = p.knR;
   D.legL.foot.rotation.x = p.ftL;
   D.legR.foot.rotation.x = p.ftR;
-  D.armL.sh.rotation.set(-p.shL, 0, p.shLz);
-  D.armR.sh.rotation.set(-p.shR, 0, -p.shRz);
+  // Arme stehen wegen des Bauchs immer etwas ab
+  D.armL.sh.rotation.set(-p.shL, 0, p.shLz + 0.14);
+  D.armR.sh.rotation.set(-p.shR, 0, -p.shRz - 0.14);
   D.armL.el.rotation.x = -p.elL;
   D.armR.el.rotation.x = -p.elR;
   D.head.rotation.set(p.headP - P.nod * 0.25, 0, p.headR);
+  // Schlappohren: gedämpfte Feder, reagiert auf Absprung, Landung und Schritte
+  const S = P.earSim || (P.earSim = { a: 0.2, va: 0, b: 0, vb: 0, lastVy: 0, lastY: p.hipsY, lastYV: 0, lat: 0, vlat: 0, lastLat: 0 });
+  if (dt > 0) {
+    const vy = (P.onGround ? 0 : P.vy) + (p.hipsY - S.lastY) / dt;
+    const kick = r3clamp(vy - S.lastVy, -14, 14);     // Geschwindigkeitssprung = Stoß
+    S.lastVy = vy; S.lastY = p.hipsY;
+    S.va += -kick * 0.28 + (90 * (0.22 + p.ear - S.a) - 6.5 * S.va) * dt;
+    S.a = r3clamp(S.a + S.va * dt, 0.12, 2.3);
+    S.vb += (70 * (p.earB - S.b) - 6 * S.vb) * dt;
+    S.b = r3clamp(S.b + S.vb * dt, -0.4, 1.5);
+    const lk = r3clamp(P.latVel - S.lastLat, -6, 6); S.lastLat = P.latVel;
+    S.vlat += lk * 0.25 + (80 * -S.lat - 6 * S.vlat) * dt;
+    S.lat = r3clamp(S.lat + S.vlat * dt, -0.6, 0.6);
+  }
   for (const ear of D.ears) {
     const d = ear.userData.d;
-    ear.rotation.set(-0.15 + P.earKick * 0.6 * Math.sin(t * 40), 0, d * (p.ear + P.earKick * 0.5));
+    const kick = P.earKick * 0.35 * Math.sin(t * 38);
+    ear.rotation.set(S.b + kick * 0.5, 0, d * Math.max(0.12, S.a + kick + d * S.lat));
   }
+  // Mimik + Blinzeln
+  setPorkExpr(D, porkExprFor(P, t));
+  const blink = !P.dead && (t % 3.7) < 0.12 ? 0.12 : 1;
+  for (const g of D.face.eyes) g.scale.y = blink;
   // Federn
   const springs = P.shoesT > 0;
   D.legL.spring.visible = springs;
@@ -2233,7 +2468,7 @@ async function startRun3d() {
   r3.pl = {
     s: 0, lane: 0, prevLane: 0, x: 0, xPrev: 0, latVel: 0, y: 0, vy: 0, onGround: true,
     slideT: 0, slideQueued: false, landT: 0, hitT: 0, invuln: 0, hearts: R3.HEARTS,
-    shoesT: 0, beeT: 0, beeLift: 0, flipT: 0, flipDur: 1, spinT: 0, earKick: 0, nod: 0,
+    shoesT: 0, beeT: 0, beeLift: 0, flipT: 0, flipDur: 1, spinT: 0, earKick: 0, nod: 0, happyT: 0,
     phase: 0, dead: false, deadT: 0, pose: zeroPose()
   };
   extendTrack(r3.track, R3.VIEW + 160);
@@ -2402,6 +2637,7 @@ function r3Update(dt) {
   P.spinT = Math.max(0, P.spinT - dt);
   P.earKick = Math.max(0, P.earKick - dt * 3);
   P.nod = Math.max(0, P.nod - dt * 5);
+  P.happyT = Math.max(0, P.happyT - dt);
   if (P.shoesT > 0) {
     P.shoesT -= dt;
     if (Math.random() < dt * 12) { worldAt(P.s, P.x, 0.2, _pv); burst(_pv, '#6ee7ff', 1, 1, 0.4, 0.5); }
@@ -2446,6 +2682,7 @@ function r3Update(dt) {
     Sound.r3Phone(r3.combo);
     P.earKick = 1;
     P.nod = 1;
+    P.happyT = 0.6;
     worldAt(ph.s, ph.x, ph.h, _pv);
     burst(_pv, '#ffb3e6', 7, 3, 0.4, 1.5);
   }
@@ -2457,6 +2694,7 @@ function r3Update(dt) {
     it.taken = true;
     Sound.pickup();
     P.spinT = 0.6;
+    P.happyT = 1.2;
     worldAt(it.s, it.x, 1, _pv);
     burst(_pv, POWERUPS[it.type].color, 22, 4, 0.7, 2);
     POWERUPS[it.type].start(P);
