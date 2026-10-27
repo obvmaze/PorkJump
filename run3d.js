@@ -84,15 +84,19 @@ const r3clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const smooth01 = t => t * t * (3 - 2 * t);
 const damp = (k, dt) => 1 - Math.exp(-k * dt);
 
+// Texturen werden doppelt so fein gemalt wie ihre Maße (schärfer, v. a. Schrift und Holz)
+const TEX_RES = 2;
 function canvasTex(w, h, draw, repeat) {
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
+  c.width = w * TEX_RES;
+  c.height = h * TEX_RES;
   const g = c.getContext('2d');
+  g.scale(TEX_RES, TEX_RES);
   draw(g, w, h);
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
-  t.anisotropy = 4;
+  // schräg gesehene Flächen (Holzweg, Sand) bleiben scharf statt zu verschwimmen
+  t.anisotropy = Math.min(8, E.renderer.capabilities.getMaxAnisotropy());
   if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
   return t;
 }
@@ -193,10 +197,16 @@ class IPool {
     this.zero = zero;
     this.dirty = true;
     this.shadowWanted = !!shadow;
+    // nur bis zum höchsten belegten Platz zeichnen (leere Plätze kosten sonst auch Leistung)
+    this.trim = true;
+    this.used = new Uint8Array(cap);
+    this.hi = 0;
   }
   add(m, color) {
     const i = this.free.pop();
     if (i === undefined) return -1;
+    this.used[i] = 1;
+    if (i >= this.hi) this.hi = i + 1;
     this.mesh.setMatrixAt(i, m);
     if (color !== undefined) this.mesh.setColorAt(i, color);
     this.dirty = true;
@@ -206,10 +216,13 @@ class IPool {
     if (i < 0) return;
     this.mesh.setMatrixAt(i, this.zero);
     this.free.push(i);
+    this.used[i] = 0;
+    while (this.hi > 0 && !this.used[this.hi - 1]) this.hi--;
     this.dirty = true;
   }
   flush() {
     if (!this.dirty) return;
+    if (this.trim) this.mesh.count = this.hi;
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
     this.dirty = false;
@@ -256,7 +269,7 @@ function makeTextures() {
     const r = rng(9);
     g.fillStyle = '#f2d3a0';
     g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2600; i++) {
+    for (let i = 0; i < 5200; i++) {
       const v = r();
       g.fillStyle = v < 0.5 ? 'rgba(170,120,70,0.18)' : 'rgba(255,245,220,0.25)';
       g.fillRect(r() * w, r() * h, 1.5, 1.5);
@@ -568,11 +581,11 @@ function makeSea() {
         col += vec3(1.0, 0.72, 0.42) * pow(sp, 220.0) * 3.0;
         col += vec3(1.0, 0.5, 0.25) * pow(sp, 24.0) * 0.35;
         vec3 hd = normalize(vec3(vWorld.x - cameraPosition.x, 0.0, vWorld.z - cameraPosition.z));
-        col = mix(col, skyColor(vec3(hd.x, 0.0, hd.z)), smoothstep(160.0, 640.0, dist));
+        col = mix(col, skyColor(vec3(hd.x, 0.0, hd.z)), smoothstep(260.0, 1050.0, dist));
         gl_FragColor = vec4(col, 1.0);
       }`
   });
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1), mat);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600, 1, 1), mat);
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = SEA_Y;
   sea.frustumCulled = false;
@@ -586,28 +599,56 @@ function makeFarRing() {
     const a = (deg * Math.PI) / 180;
     return [Math.sin(a) * dist, Math.cos(a) * dist];
   };
-  const hillMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
-  const hill = (deg, dist, rad, hgt, top, bottom) => {
-    const geo = new THREE.ConeGeometry(rad, hgt, 9, 3);
-    const c1 = new THREE.Color(top), c2 = new THREE.Color(bottom);
-    const pa = geo.attributes.position, cols = [];
-    for (let i = 0; i < pa.count; i++) {
-      const t = (pa.getY(i) + hgt / 2) / hgt;
-      const c = c2.clone().lerp(c1, t);
-      cols.push(c.r, c.g, c.b);
-      pa.setX(i, pa.getX(i) * (1 + Math.sin(i * 1.7) * 0.08));
+  const hillMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
+  // Bergkette als gebogene Wand zur Mitte hin: unregelmäßige Gipfel, Fuß unter dem Wasser
+  // (die Kulisse wandert mit der Kamera, deshalb sieht man sie immer von vorne)
+  let seed = 1;
+  const hill = (deg, dist, rad, hgt, top, bottom, plateau = 0) => {
+    const r = rng(seed++ * 7 + 3);
+    const W = rad * 2.4, Hm = hgt * 0.6, COLS = 48, ROWS = [1, 0.75, 0.45, 0.18, 0, -0.25];
+    const peaks = [];
+    const np = 2 + Math.floor(r() * 3);
+    for (let k = 0; k < np; k++) peaks.push({ c: 0.2 + r() * 0.6, h: 0.55 + r() * 0.45, w: 0.18 + r() * 0.22 });
+    peaks.push({ c: 0.5, h: 1, w: 0.3 + r() * 0.15 });
+    const prof = u => {
+      let h = 0;
+      for (const pk of peaks) h = Math.max(h, pk.h * Math.pow(Math.max(0, 1 - Math.abs(u - pk.c) / pk.w), 1.4));
+      h += (Math.sin(u * 37 + seed) * 0.5 + Math.sin(u * 91 + seed * 2) * 0.25) * 0.035;
+      if (plateau) h = Math.min(h, plateau) + Math.max(0, h - plateau) * 0.15;
+      return Math.max(0, h) * Math.pow(Math.sin(Math.PI * u), 0.35);
+    };
+    const pos = [], cols = [], idx = [];
+    const c1 = new THREE.Color(top), c2 = new THREE.Color(bottom), c = new THREE.Color();
+    for (let i = 0; i <= COLS; i++) {
+      const u = i / COLS, h = prof(u) * Hm;
+      for (const f of ROWS) {
+        const y = f >= 0 ? h * f : f * 40;
+        const bend = Math.pow((u - 0.5) * 2, 2) * W * 0.12;   // leicht zur Mitte gebogen
+        pos.push((u - 0.5) * W, y, bend);
+        c.copy(c2).lerp(c1, Math.pow(Math.max(0, y) / Math.max(1, Hm), 0.75));
+        cols.push(c.r, c.g, c.b);
+      }
     }
+    const R6 = ROWS.length;
+    for (let i = 0; i < COLS; i++) for (let j = 0; j < R6 - 1; j++) {
+      const a0 = i * R6 + j, b0 = a0 + R6;
+      idx.push(a0, b0, a0 + 1, b0, b0 + 1, a0 + 1);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    geo.setIndex(idx);
     const m = new THREE.Mesh(geo, hillMat);
     const [x, z] = toward(deg, dist);
-    m.position.set(x, hgt / 2 - 6, z);
-    m.scale.y = 0.55;
+    m.position.set(x, -0.5, z);
+    m.rotation.y = Math.atan2(x, z) + Math.PI;    // Vorderseite zur Mitte
     ring.add(m);
     return m;
   };
   // Gegenlicht-Inseln bei der Sonne (dunkel, lila)
   hill(4, 640, 60, 70, '#5b2a5e', '#c9667a');
-  hill(17, 680, 110, 120, '#4e2556', '#c05f78');
+  hill(17, 690, 110, 120, '#4e2556', '#c05f78');
+  hill(19, 652, 40, 52, '#5b2a5e', '#c9667a', 0.55);   // Insel mit Leuchtturm
   hill(30, 600, 50, 60, '#6a3366', '#d9727f');
   hill(-8, 700, 45, 40, '#6a3366', '#d9727f');
   // Küste rechts (von der Sonne angestrahlt)
@@ -1499,7 +1540,15 @@ function ribbon(s0, s1, cols, heightFn, opts) {
 // Hilfsobjekte erst anlegen, wenn Three.js geladen ist (siehe initScratch)
 let SAND_DRY, SAND_WET, SAND_DUNE;
 
+// Ein Streckenstück entsteht in mehreren Schritten (yield), damit der Aufbau über
+// mehrere Bilder verteilt werden kann und kein einzelnes Bild hängt.
 function buildChunk(ci) {
+  const it = chunkSteps(ci);
+  let r;
+  while (!(r = it.next()).done);
+  return r.value;
+}
+function* chunkSteps(ci) {
   const s0 = ci * R3.CHUNK, s1 = s0 + R3.CHUNK;
   const ch = { ci, s0, s1, meshes: [], decor: [] };
   const M = E.mat;
@@ -1507,6 +1556,7 @@ function buildChunk(ci) {
   const road = new THREE.Mesh(ribbon(s0, s1, ROAD_COLS, (p, cd) => p.y + cd[1], { u: (d, cd) => cd[2], vScale: 8.4, flip: true }), M.planks);
   road.receiveShadow = true;
   ch.meshes.push(road);
+  yield ch;
   // Sand links/rechts
   const sandColor = (p, d, h, cc) => {
     if (h < 0.35) cc.copy(SAND_WET).lerp(SAND_DRY, r3clamp((h + 0.2) / 0.55, 0, 1));
@@ -1519,6 +1569,7 @@ function buildChunk(ci) {
     const m = new THREE.Mesh(ribbon(s0, s1, cols, (p, d) => sandH(p, d), { u: d => d / 5, vScale: 5, colors: sandColor, flip: cols === SAND_R }), M.sand);
     m.receiveShadow = true;
     ch.meshes.push(m);
+    yield ch;
   }
   // Brandung: Schaumstreifen dort, wo der Strand ins Wasser geht
   const foam = ribbon(s0, s1, [0, 1, 2, 3], (p, j, jj) => {
@@ -1550,6 +1601,7 @@ function buildChunk(ci) {
   const foamMesh = new THREE.Mesh(foam, M.foam);
   foamMesh.renderOrder = 1;
   ch.meshes.push(foamMesh);
+  yield ch;
   for (const m of ch.meshes) E.scene.add(m);
   placeDecor(ch);
   return ch;
@@ -1857,7 +1909,7 @@ function addSign(ch, s, d) {
 const OBS = {
   barrier: { hw: 0.95, hd: 0.22, bottom: 0, top: 0.88, lethal: false },   // Trefferzone etwas kleiner als das Modell
   crates: { hw: 0.95, hd: 0.5, bottom: 0, top: 0.92, lethal: false },
-  gate: { hw: 1.15, hd: 0.25, bottom: 1.12, top: 9, lethal: false },
+  gate: { hw: 1.15, hd: 0.25, bottom: 1.12, top: 3.3, lethal: false },  // mit Federschuhen überspringbar
   kiosk: { hw: 1.05, hd: 1.1, bottom: 0, top: 2.1, lethal: true },        // mit Federschuhen überspringbar
   container: { hw: 1.05, hd: 1.1, bottom: 0, top: 2.3, lethal: true },
   crab: { hw: 0.85, hd: 0.6, bottom: 0, top: 0.9, lethal: false, speed: 4.5 },
@@ -2063,6 +2115,7 @@ function buildPhones() {
   const CAP = 140;
   E.phoneBody = new IPool(body, E.mat.phoneBody, CAP, false);
   E.phoneScreen = new IPool(screen, E.mat.phoneScreen, CAP, false);
+  E.phoneBody.trim = E.phoneScreen.trim = false;   // Handys verwalten ihre Plätze selbst
   E.scene.add(E.phoneBody.mesh, E.phoneScreen.mesh);
   // Glanz hinter jedem Handy: ein Points-Objekt für alle (1 Draw-Call)
   const gp = new Float32Array(CAP * 3).fill(-9999);
@@ -2237,20 +2290,21 @@ const POWERUPS = {
   }
 };
 
+function makePickupMesh(type) {
+  const mesh = new THREE.Group();
+  const model = POWERUPS[type].model();
+  model.userData.spin = true;
+  mesh.add(model);
+  const halo = pickupHalo(POWERUPS[type].color);
+  halo.position.y = 0.95;
+  mesh.add(halo);
+  mesh.userData.model = model;
+  mesh.userData.fx = halo.userData.fx;
+  return mesh;
+}
 function spawnPickup(type, s, lane) {
   const pool = E.pickPool[type] || (E.pickPool[type] = []);
-  let mesh = pool.pop();
-  if (!mesh) {
-    mesh = new THREE.Group();
-    const model = POWERUPS[type].model();
-    model.userData.spin = true;
-    mesh.add(model);
-    const halo = pickupHalo(POWERUPS[type].color);
-    halo.position.y = 0.95;
-    mesh.add(halo);
-    mesh.userData.model = model;
-    mesh.userData.fx = halo.userData.fx;
-  }
+  const mesh = pool.pop() || makePickupMesh(type);
   E.scene.add(mesh);
   const it = { type, s, lane, x: lane * R3.LANE_W, mesh, taken: false, t: 0 };
   r3.items.push(it);
@@ -2459,12 +2513,12 @@ function initEngine() {
   initScratch();
   const canvas3d = document.getElementById('game3d');
   const coarse = matchMedia('(pointer: coarse)').matches;
-  const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: !coarse || (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, powerPreference: 'high-performance' });
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;   // schärfer und günstiger als PCFSoft
   E = { renderer, coarse, pools: [], obsPool: {}, pickPool: {}, quality: coarse ? 1 : 2, frameTimes: [] };
   E.sunDir = new THREE.Vector3(...SUN_DIR_ARR).normalize();
   E.timeU = { value: 0 };
@@ -2478,6 +2532,7 @@ function initEngine() {
   E.scene.add(E.hemi);
   E.sun = new THREE.DirectionalLight('#ffb27a', 2.3);
   E.sun.castShadow = true;
+  E.sun.shadow.mapSize.set(2048, 2048);
   E.sun.shadow.bias = -0.0006;
   E.sun.shadow.normalBias = 0.03;
   const sc = E.sun.shadow.camera;
@@ -2500,22 +2555,46 @@ function initEngine() {
   E.pork.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   applyQuality();
   r3Resize();
+  prewarm();
   canvas3d.addEventListener('webglcontextlost', e => {
     e.preventDefault();
     if (mode === 'run3d' && state === 'playing') pauseGame();
   });
 }
 
+// Qualität: Schatten und Shader bleiben immer gleich (Umschalten würde alle Shader neu
+// übersetzen = spürbarer Hänger). Nur die Auflösung passt sich sanft der Leistung an.
+// Beim Laden schon alles einmal vorbereiten, was später im Spiel auftaucht:
+// Modelle für die Pools bauen, Shader übersetzen, Texturen hochladen.
+// Sonst ruckelt es genau dann, wenn z. B. der erste Buggy oder die erste Biene kommt.
+function prewarm() {
+  const tmp = [];
+  for (const kind of Object.keys(OBS)) {
+    const pool = E.obsPool[kind] || (E.obsPool[kind] = []);
+    const n = kind === 'barrier' || kind === 'gate' || kind === 'crates' ? 6 : 3;   // Reihen brauchen mehrere
+    for (let i = 0; i < n; i++) { const m = buildObstacle(kind); pool.push(m); tmp.push(m); }
+  }
+  for (const type of Object.keys(POWERUPS)) {
+    const pool = E.pickPool[type] || (E.pickPool[type] = []);
+    const m = makePickupMesh(type); pool.push(m); tmp.push(m);
+  }
+  tmp.forEach((m, i) => { m.position.set((i % 6) * 3 - 8, 1, 12 + Math.floor(i / 6) * 3); E.scene.add(m); });
+  E.camera.position.set(0, 4, -4);
+  E.camera.lookAt(0, 1, 14);
+  for (const t of Object.values(E.tex)) E.renderer.initTexture(t);
+  E.renderer.compile(E.scene, E.camera);
+  E.renderer.render(E.scene, E.camera);     // auch Schatten-Shader einmal benutzen
+  for (const m of tmp) { E.scene.remove(m); m.position.set(0, 0, 0); }
+}
+
 function applyQuality() {
-  const q = E.quality;
   const dpr = window.devicePixelRatio || 1;
-  E.renderer.setPixelRatio(Math.min(dpr, q === 2 ? 2 : q === 1 ? 1.5 : 1));
-  E.renderer.shadowMap.enabled = q > 0;
-  E.sun.castShadow = q > 0;
-  E.sun.shadow.mapSize.set(q === 2 ? 2048 : 1024, q === 2 ? 2048 : 1024);
-  if (E.sun.shadow.map) { E.sun.shadow.map.dispose(); E.sun.shadow.map = null; }
-  for (const p of E.pools) p.mesh.castShadow = p.shadowWanted && q === 2;
-  E.scene.traverse(o => { if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.needsUpdate = true; }); } });
+  E.maxPR = Math.min(dpr, 2);                 // mehr als 2x sieht man kaum, kostet aber viel
+  E.minPR = Math.min(1, E.maxPR);
+  if (!E.pr) E.pr = E.maxPR;
+  if (E.quality === 0) E.pr = E.minPR;        // für Tests: niedrigste Stufe erzwingen
+  E.pr = r3clamp(E.pr, E.minPR, E.maxPR);
+  E.renderer.setPixelRatio(E.pr);
   r3Resize();
 }
 
@@ -2531,6 +2610,8 @@ window.addEventListener('resize', r3Resize);
 function r3ClearWorld() {
   if (!r3) return;
   for (const ch of r3.chunks) destroyChunk(ch);
+  if (r3.job && r3.job.ch) for (const m of r3.job.ch.meshes) { E.scene.remove(m); m.geometry.dispose(); }
+  r3.job = null;
   for (const o of r3.obs) releaseObstacle(o);
   for (const ph of r3.phones) releasePhone(ph);
   for (const it of r3.items) releasePickup(it);
@@ -2561,7 +2642,7 @@ async function ensure3d() {
 
 async function startRun3d() {
   show(el.modeSelect, false);
-  if (!(await ensure3d())) return;
+  if (!(window.THREE && E) && !(await ensure3d())) return;   // schon geladen: ohne Warten starten
   menu3dLeave();
   show(document.getElementById('menu3d'), false);
   r3ClearWorld();
@@ -2572,7 +2653,7 @@ async function startRun3d() {
   r3 = {
     track: newTrack(), chunks: [], obs: [], phones: [], items: [], hints: [],
     gen: { s: 20, tutorial: 0, lastPower: 120 },
-    t: 0, speed: 0, baseSpeed: 0, phonesN: 0, combo: 0, lastPhoneT: -9, shake: 0, overT: 0,
+    t: 0, speed: 0, baseSpeed: 0, camS: -CAM_BACK, phonesN: 0, combo: 0, lastPhoneT: -9, shake: 0, overT: 0,
     hud: {}, intro: 1.1
   };
   r3.pl = {
@@ -2583,7 +2664,8 @@ async function startRun3d() {
   };
   extendTrack(r3.track, R3.VIEW + 160);
   genContent(R3.VIEW);
-  syncChunks();
+  syncChunks(true);
+  E.renderer.compile(E.scene, E.camera);   // Strecken-Shader vor dem ersten Bild übersetzen
   E.camera.position.set(0, 2.2, 6);
   r3.camLook = new THREE.Vector3(0, 1.4, 0);
   state = 'playing';
@@ -2874,7 +2956,7 @@ function r3Resume() {
   if (r3 && r3.pl.beeT > 0) Sound.startBuzz();
 }
 
-function syncChunks() {
+function syncChunks(all) {
   const P = r3.pl;
   const want0 = Math.max(0, Math.floor((P.s - 40) / R3.CHUNK));
   const want1 = Math.floor((P.s + R3.VIEW) / R3.CHUNK);
@@ -2884,7 +2966,17 @@ function syncChunks() {
     if (ch.ci < want0) { destroyChunk(ch); r3.chunks.splice(i, 1); }
   }
   const have = new Set(r3.chunks.map(c => c.ci));
-  for (let ci = want0; ci <= want1; ci++) if (!have.has(ci)) r3.chunks.push(buildChunk(ci));
+  if (r3.job) have.add(r3.job.ci);
+  for (let ci = want0; ci <= want1; ci++) {
+    if (have.has(ci)) continue;
+    if (all || ci * R3.CHUNK < P.s + 75) r3.chunks.push(buildChunk(ci));   // gleich im Bild: sofort bauen
+    else if (!r3.job) r3.job = { ci, it: chunkSteps(ci) };              // weiter vorne: Schritt für Schritt
+  }
+  if (r3.job) {                                    // pro Bild nur ein Bauschritt
+    const r = r3.job.it.next();
+    if (r.done) { r3.chunks.push(r.value); r3.job = null; }
+    else r3.job.ch = r.value;
+  }
   trimTrack(r3.track, P.s - 60);
 }
 
@@ -3122,6 +3214,7 @@ function updateCamera(dt) {
   // beim schnellen Bienenflug hinkt die weiche Kamera sonst weit hinterher
   const lag = r3.baseSpeed > 0 ? (r3.speed - r3.baseSpeed) / 9 : 0;
   const back = CAM_BACK + bee * 0.8 - lag, up = CAM_UP + P.y * 0.8 + bee * 0.4;
+  r3.camS = P.s - back;
   worldAt(P.s - back, P.x * 0.6, up, _cv);
   worldAt(P.s + CAM_AHEAD, P.x * 0.75, CAM_LOOK_H + P.y * 0.65, _lv);
   if (P.dead) {
@@ -3174,7 +3267,8 @@ function updateWorld(dt) {
   for (let i = r3.obs.length - 1; i >= 0; i--) {
     const o = r3.obs[i];
     if (o.s < P.s - 18 || o.gone) { releaseObstacle(o); r3.obs.splice(i, 1); continue; }
-    o.mesh.visible = P.dead || o.s > P.s - 1.6 || !!o.fly;
+    // erst ausblenden, wenn das Hindernis die Kamera erreicht (sonst fährt sie hindurch)
+    o.mesh.visible = P.dead || o.s - o.def.hd - 1.2 > r3.camS || !!o.fly;
     const u = o.mesh.userData;
     if (u.warn) {   // Warnzeichen blinkt, solange der Gegner kommt
       const on = !o.hit && o.s > P.s + 2;
@@ -3229,7 +3323,7 @@ function updateWorld(dt) {
   const ga = E.phoneGlow.geometry.attributes.position.array;
   for (let i = r3.phones.length - 1; i >= 0; i--) {
     const ph = r3.phones[i];
-    if (ph.s < P.s - 6 || (ph.taken && ph.anim > 0.35)) { releasePhone(ph); r3.phones.splice(i, 1); continue; }
+    if (ph.s < P.s - 3 || (ph.taken && ph.anim > 0.35)) { releasePhone(ph); r3.phones.splice(i, 1); continue; }
     ph.t += dt;
     let sc = 1, h = ph.h + Math.sin(ph.t * 3) * 0.08, ps = ph.s, px = ph.x;
     if (ph.taken) {
@@ -3240,6 +3334,8 @@ function updateWorld(dt) {
       px = r3lerp(ph.x, P.x, e);
       h = r3lerp(ph.h, P.y + 2.9, e);
       sc = k < 0.25 ? 1 + k * 1.6 : 1.4 * (1 - (k - 0.25) / 0.75);
+    } else if (ph.s < P.s - 0.5) {
+      sc = r3clamp((ph.s - (P.s - 3)) / 2.5, 0, 1);   // verpasste Handys schrumpfen hinter Pork weg
     }
     const q = worldAt(ps, px, h, _tv);
     _phE.set(0.15, q.yaw + Math.PI + Math.sin(ph.t * 2.2) * 0.45, Math.sin(ph.t * 1.7) * 0.12);   // Bildschirm zu Pork, leicht wippend
@@ -3247,7 +3343,7 @@ function updateWorld(dt) {
     _phM.compose(_tv, _phQ, _phS.set(sc, sc, sc));
     E.phoneBody.mesh.setMatrixAt(ph.slot, _phM);
     E.phoneScreen.mesh.setMatrixAt(ph.slot, _phM);
-    ga[ph.slot * 3] = _tv.x; ga[ph.slot * 3 + 1] = ph.taken ? -9999 : _tv.y; ga[ph.slot * 3 + 2] = _tv.z;
+    ga[ph.slot * 3] = _tv.x; ga[ph.slot * 3 + 1] = ph.taken || sc < 0.6 ? -9999 : _tv.y; ga[ph.slot * 3 + 2] = _tv.z;
   }
   E.phoneBody.mesh.instanceMatrix.needsUpdate = true;
   E.phoneScreen.mesh.instanceMatrix.needsUpdate = true;
@@ -3322,12 +3418,18 @@ function showR3Msg(text, dur, hint) {
 /* ---------- Leistung: Qualität automatisch anpassen ---------- */
 function watchPerformance(dt) {
   if (r3.intro > 0) return;
+  if (E.noAuto) return;
   const F = E.frameTimes;
   F.push(dt);
-  if (F.length < 150) return;
-  const avg = F.reduce((a, b) => a + b, 0) / F.length;
+  if (F.length < 90) return;
+  F.sort((a, b) => a - b);
+  const typ = F[Math.floor(F.length * 0.7)];   // typische Bildzeit (einzelne Ausreißer zählen nicht)
   F.length = 0;
-  if (avg > 0.026 && E.quality > 0) { E.quality--; applyQuality(); }
+  if (typ > 1 / 48 && E.pr > E.minPR) {        // unter ~48 FPS: Auflösung etwas runter
+    E.pr = Math.max(E.minPR, E.pr - 0.25); E.goodRuns = 0; applyQuality();
+  } else if (typ < 1 / 57 && E.pr < E.maxPR && ++E.goodRuns >= 4) {   // lange flüssig: wieder schärfer
+    E.pr = Math.min(E.maxPR, E.pr + 0.25); E.goodRuns = 0; applyQuality();
+  }
 }
 
 /* ---------- Ein Bild (wird aus der Haupt-Schleife in game.js aufgerufen) ---------- */
