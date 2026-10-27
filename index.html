@@ -82,13 +82,35 @@
         <div id="bestVal">
           <span id="bestClassic">Classic 0 m</span>
           <span id="bestRun">Run 0 m</span>
-          <span id="best3d">3D Run 0 m</span>
         </div>
       </div>
+      <button id="btnGo3d" class="sidebtn" aria-label="Zum 3D-Menü">3D</button>
+    </div>
+
+    <!-- 3D-Menü (eigene Währung, eigener Shop) -->
+    <div id="menu3d" class="screen hidden">
+      <div class="wallet" aria-label="3D-Handys gesamt"><i class="phone-ico"></i><span id="wallet3dVal">0</span></div>
+      <h1 class="title">Pork<br>Jump<b class="title3d">3D</b></h1>
+      <button id="btnGear3d" class="iconbtn" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+      </button>
+      <button id="btnStart3d" class="bigbtn">Start</button>
+      <button id="btnShop3d" class="shopbtn">Shop</button>
+      <div id="trophy3d" class="trophy">
+        <svg viewBox="0 0 64 64">
+          <path d="M18 8h28v14a14 14 0 0 1-28 0z" fill="#ffd23f" stroke="#7a4b00" stroke-width="3"/>
+          <path d="M18 12H8a10 10 0 0 0 12 14M46 12h10a10 10 0 0 1-12 14" fill="none" stroke="#7a4b00" stroke-width="3"/>
+          <rect x="28" y="35" width="8" height="10" fill="#f2b705" stroke="#7a4b00" stroke-width="3"/>
+          <rect x="20" y="45" width="24" height="9" rx="2" fill="#ffd23f" stroke="#7a4b00" stroke-width="3"/>
+          <path d="M24 12v8" stroke="#fff6c4" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="bestbox"><span id="best3d">3D Jump 'n' Run 0 m</span></div>
+      </div>
+      <button id="btnGo2d" class="sidebtn" aria-label="Zum 2D-Menü">2D</button>
     </div>
 
     <!-- Shop (noch Vorschau: Skins kommen später) -->
-    <div id="shop" class="screen hidden">
+    <div id="shop" class="screen shop hidden">
       <div class="wallet" aria-label="Handys gesamt"><i class="phone-ico"></i><span id="shopWallet">0</span></div>
       <h2 class="shop-title">Shop</h2>
       <p class="soon">Coming soon</p>
@@ -100,13 +122,26 @@
       <button class="btn shop-back" id="btnShopBack">Zurück</button>
     </div>
 
+    <!-- 3D-Shop (eigene Handys, eigene Skins) -->
+    <div id="shop3d" class="screen shop hidden">
+      <div class="wallet" aria-label="3D-Handys gesamt"><i class="phone-ico"></i><span id="shop3dWallet">0</span></div>
+      <h2 class="shop-title">3D Shop</h2>
+      <p class="soon">Coming soon</p>
+      <div class="skins">
+        <div class="skin"><div class="skin-pic"><img alt="Geheimer 3D-Skin" data-variant3d="0"><b>?</b></div><div class="price"><i class="phone-ico"></i><span></span></div></div>
+        <div class="skin"><div class="skin-pic"><img alt="Geheimer 3D-Skin" data-variant3d="1"><b>?</b></div><div class="price"><i class="phone-ico"></i><span></span></div></div>
+        <div class="skin"><div class="skin-pic"><img alt="Geheimer 3D-Skin" data-variant3d="2"><b>?</b></div><div class="price"><i class="phone-ico"></i><span></span></div></div>
+      </div>
+      <button class="btn shop-back" id="btnShop3dBack">Zurück</button>
+    </div>
+
     <!-- Modus-Auswahl nach "Start" -->
     <div id="modeSelect" class="modal hidden">
       <div class="panel">
         <h2>Modus</h2>
         <button class="btn mode" id="btnClassic">Classic<small>Endlos nach oben springen</small></button>
         <button class="btn mode" id="btnRun">Run<small>Laufen, springen, sliden</small></button>
-        <button class="btn mode mode3d" id="btnRun3d"><b class="newbadge">NEU</b>3D Run<small>Wischen, ausweichen, Handys sammeln</small></button>
+        <button class="btn mode mode3d hidden" id="btnRun3d">3D Jump 'n' Run<small>Wischen, ausweichen, Handys sammeln</small></button>
         <p id="r3LoadMsg" class="r3loadmsg"></p>
         <button class="btn ghost" id="btnModeBack">Zurück</button>
       </div>

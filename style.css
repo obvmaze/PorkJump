@@ -166,7 +166,7 @@ button {
 @keyframes pulse {
   50% { transform: translate(-50%, -50%) scale(1.06); }
 }
-#trophy {
+#trophy, .trophy {
   position: absolute;
   bottom: calc(5% + env(safe-area-inset-bottom));
   left: 50%;
@@ -176,8 +176,8 @@ button {
   align-items: center;
   pointer-events: none;
 }
-#trophy svg { width: 72px; height: 72px; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.3)); }
-#bestVal {
+#trophy svg, .trophy svg { width: 72px; height: 72px; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.3)); }
+#bestVal, .bestbox {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -323,7 +323,7 @@ button {
 .shopbtn:active { box-shadow: 0 1px 0 #3b1d2a; margin-top: 4px; }
 
 /* Shop */
-#shop {
+#shop, #shop3d {
   z-index: 26;
   background: linear-gradient(#2b1055, #6e2a6e 60%, #a8406f);
   display: flex;
@@ -333,7 +333,8 @@ button {
   gap: 10px;
   padding: 0 14px;
 }
-#shop.hidden { display: none !important; }
+#shop.hidden, #shop3d.hidden { display: none !important; }
+#shop3d { background: linear-gradient(#0f2a4a, #2b4f8a 60%, #e0708a); }
 .shop-title {
   margin: 0;
   font-size: 54px;
@@ -517,3 +518,39 @@ button {
   min-height: 0;
 }
 .panel .r3wait { font-size: 18px; animation: blink 0.8s steps(2) infinite; }
+
+/* ---------- 2D/3D-Umschalter unten links ---------- */
+.sidebtn {
+  position: absolute;
+  left: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  border: 3px solid #3b1d2a;
+  background: linear-gradient(#7fe0ff, #2f8fe0);
+  color: #fff;
+  font-size: 24px;
+  padding: 5px 0 0;
+  text-shadow: 2px 2px 0 #3b1d2a;
+  box-shadow: 0 4px 0 #3b1d2a;
+  z-index: 30;
+}
+#btnGo2d { background: linear-gradient(#ffb3c6, #f2557f); }
+.sidebtn:active { box-shadow: 0 1px 0 #3b1d2a; transform: translateY(3px); }
+
+/* ---------- 3D-Menü: tanzender 3D-Pork im Hintergrund ---------- */
+#menu3d .title { top: calc(6% + env(safe-area-inset-top)); }
+.title3d {
+  display: inline-block;
+  margin-left: 8px;
+  font-weight: normal;
+  font-size: 0.62em;
+  color: #7fe0ff;
+  text-shadow: 0 3px 0 #2f6fb0, 0 6px 0 #3b1d2a;
+  transform: rotate(8deg) translateY(-6px);
+}
+#menu3d .bigbtn { top: 64%; }
+#menu3d .shopbtn { top: calc(64% + 50px); }
+#trophy3d .bestbox { font-size: 20px; white-space: nowrap; }
+#trophy3d svg { width: 54px; height: 54px; }

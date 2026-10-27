@@ -1137,7 +1137,7 @@ function buildBee(scale) {
 
 /* ---------- Pose & Animation ---------- */
 // ear = Ohren abspreizen (+ = nach außen/oben), earB = Ohren nach hinten wehen
-const POSE_KEYS = ['hipsY', 'pitch', 'roll', 'yaw', 'thL', 'knL', 'thR', 'knR', 'ftL', 'ftR', 'shL', 'shLz', 'elL', 'shR', 'shRz', 'elR', 'headP', 'headR', 'ear', 'earB', 'belly'];
+const POSE_KEYS = ['hipsY', 'pitch', 'roll', 'yaw', 'thL', 'knL', 'thR', 'knR', 'ftL', 'ftR', 'shL', 'shLz', 'elL', 'shR', 'shRz', 'elR', 'headP', 'headR', 'ear', 'earB', 'belly', 'bodyX'];
 function zeroPose() { const p = {}; for (const k of POSE_KEYS) p[k] = 0; p.hipsY = PORK_HIP; return p; }
 
 function porkTargetPose(p, t, out) {
@@ -1246,18 +1246,9 @@ function porkExprFor(P, t) {
   return 'smile';
 }
 
-const _pose = {};
-function animatePork(dt, t) {
-  const P = r3.pl, D = E.pork;
-  porkTargetPose(P, t, _pose);
-  const k = damp(P.dead ? 8 : 20, dt);
-  for (const key of POSE_KEYS) P.pose[key] += (_pose[key] - P.pose[key]) * k;
-  const p = P.pose;
-  D.body.position.y = p.hipsY;
-  // Saltos (Federschuhe) und Power-up-Dreher werden obendrauf gesetzt
-  let flip = 0, spin = 0;
-  if (P.flipT > 0) flip = (1 - P.flipT / P.flipDur) * Math.PI * 2;
-  if (P.spinT > 0) spin = (1 - P.spinT / 0.6) * Math.PI * 2;
+// Pose auf die Gelenke übertragen (Laufen und Tanzen im 3D-Menü)
+function applyPorkPose(D, p, flip = 0, spin = 0, nod = 0) {
+  D.body.position.set(p.bodyX || 0, p.hipsY, 0);
   D.body.rotation.set(p.pitch + flip, p.yaw + spin, p.roll, 'YXZ');
   D.torso.scale.set(1 + p.belly, 1 - p.belly, 1 + p.belly * 1.4);
   D.legL.hip.rotation.x = -p.thL;
@@ -1271,7 +1262,21 @@ function animatePork(dt, t) {
   D.armR.sh.rotation.set(-p.shR, 0, -p.shRz - 0.14);
   D.armL.el.rotation.x = -p.elL;
   D.armR.el.rotation.x = -p.elR;
-  D.head.rotation.set(p.headP - P.nod * 0.25, 0, p.headR);
+  D.head.rotation.set(p.headP - nod * 0.25, 0, p.headR);
+}
+
+const _pose = {};
+function animatePork(dt, t) {
+  const P = r3.pl, D = E.pork;
+  porkTargetPose(P, t, _pose);
+  const k = damp(P.dead ? 8 : 20, dt);
+  for (const key of POSE_KEYS) P.pose[key] += (_pose[key] - P.pose[key]) * k;
+  const p = P.pose;
+  // Saltos (Federschuhe) und Power-up-Dreher werden obendrauf gesetzt
+  let flip = 0, spin = 0;
+  if (P.flipT > 0) flip = (1 - P.flipT / P.flipDur) * Math.PI * 2;
+  if (P.spinT > 0) spin = (1 - P.spinT / 0.6) * Math.PI * 2;
+  applyPorkPose(D, p, flip, spin, P.nod);
   // Schlappohren: gedämpfte Feder, reagiert auf Absprung, Landung und Schritte
   const S = P.earSim || (P.earSim = { a: 0.2, va: 0, b: 0, vb: 0, lastVy: 0, lastY: p.hipsY, lastYV: 0, lat: 0, vlat: 0, lastLat: 0 });
   if (dt > 0) {
@@ -2537,29 +2542,28 @@ function r3ClearWorld() {
   r3 = null;
 }
 
-async function startRun3d() {
+// Three.js laden und 3D-Technik einrichten (nur beim ersten Mal). false = geht nicht.
+async function ensure3d() {
+  if (window.THREE && E) return true;
   const loading = document.getElementById('r3Loading');
-  if (!window.THREE) {
-    show(loading, true);
-    show(el.modeSelect, false);
-    try { await loadThree(); } catch (e) {
-      show(loading, false);
-      document.getElementById('r3LoadMsg').textContent = '3D konnte nicht geladen werden. Bitte Internet prüfen.';
-      show(el.modeSelect, true);
-      return;
-    }
-  }
-  if (!E) {
-    show(loading, true);
-    await new Promise(r => setTimeout(r, 30));
-    try { initEngine(); } catch (e) {
-      show(loading, false);
-      document.getElementById('r3LoadMsg').textContent = '3D wird von diesem Gerät nicht unterstützt.';
-      show(el.modeSelect, true);
-      return;
-    }
+  show(loading, true);
+  try {
+    if (!window.THREE) await loadThree();
+    if (!E) { await new Promise(r => setTimeout(r, 30)); initEngine(); }
+  } catch (e) {
+    show(loading, false);
+    alert(window.THREE ? '3D wird von diesem Gerät nicht unterstützt.' : '3D konnte nicht geladen werden. Bitte Internet prüfen.');
+    return false;
   }
   show(loading, false);
+  return true;
+}
+
+async function startRun3d() {
+  show(el.modeSelect, false);
+  if (!(await ensure3d())) return;
+  menu3dLeave();
+  show(document.getElementById('menu3d'), false);
   r3ClearWorld();
   setMode('run3d');
   Sound.stopLoops();
@@ -2595,6 +2599,268 @@ async function startRun3d() {
   r3Hud(true);
   showR3Msg('LOS!', 0.9);
   Sound.r3Beep(true);
+}
+
+/* =========================================================
+   3D-MENÜ: kleine Strandbühne, John Pork tanzt (Blick von vorne)
+   ========================================================= */
+const STAGE_Y = 1.2;
+function buildMenuStage() {
+  const M = E.mat;
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z, ry = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return m;
+  };
+  const sandTex = E.tex.sand.clone(); sandTex.needsUpdate = true; sandTex.repeat.set(10, 10);
+  add(new THREE.CylinderGeometry(15, 19, 1.4, 48), new THREE.MeshStandardMaterial({ color: '#f1cf9c', map: sandTex, roughness: 0.95 }), 0, STAGE_Y - 0.7, 4);
+  // Tanzfläche aus Holz mit Lichterkante
+  add(new THREE.CylinderGeometry(1.7, 1.75, 0.14, 40), M.planks, 0, STAGE_Y + 0.07, 0);
+  const bulbs = new THREE.Group();
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * Math.PI * 2;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), M.bulb);
+    b.position.set(Math.cos(a) * 1.72, STAGE_Y + 0.16, Math.sin(a) * 1.72);
+    bulbs.add(b);
+  }
+  g.add(bulbs);
+  // Musikbox neben Pork (Lautsprecher wippen im Takt)
+  const box = new THREE.Group();
+  box.position.set(-1.05, STAGE_Y + 0.14, 0.15);
+  box.rotation.y = Math.PI + 0.35;
+  g.add(box);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.46, 0.28), new THREE.MeshStandardMaterial({ color: '#2b2f3e', roughness: 0.5 }));
+  body.position.y = 0.23; body.castShadow = true; box.add(body);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.03, 6, 16, Math.PI), M.metal);
+  handle.position.y = 0.46; box.add(handle);
+  E.menuSpeakers = [];
+  for (const x of [-0.22, 0.22]) {
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.05, 20), new THREE.MeshStandardMaterial({ color: '#ff5fa2', roughness: 0.4, emissive: '#ff5fa2', emissiveIntensity: 0.3 }));
+    sp.rotation.x = Math.PI / 2;
+    sp.position.set(x, 0.22, 0.15);
+    box.add(sp);
+    E.menuSpeakers.push(sp);
+  }
+  // Sonnenschirm und Liege im Hintergrund
+  const pole = add(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), M.metal, 2.4, STAGE_Y + 1.2, 2.6);
+  pole.castShadow = false;
+  const top = add(new THREE.ConeGeometry(1.3, 0.55, 16, 1, true), M.canopy, 2.4, STAGE_Y + 2.45, 2.6);
+  top.material = M.canopy;
+  add(new THREE.BoxGeometry(0.7, 0.12, 1.8), M.wood, -2.6, STAGE_Y + 0.3, 2.8, 0.4);
+  // Licht von vorne (die Sonne steht hinter Pork)
+  const key = new THREE.DirectionalLight('#ffe6d6', 1.25);
+  key.position.set(1.5, STAGE_Y + 5, -8);
+  key.target.position.set(0, STAGE_Y + 1, 0);
+  g.add(key, key.target);
+  // Musiknoten steigen aus der Box
+  const noteTex = canvasTex(64, 64, (c, w, h) => {
+    c.font = 'bold 54px Arial, sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 6; c.strokeStyle = '#3b1d2a'; c.strokeText('♪', 32, 34);
+    c.fillStyle = '#ffffff'; c.fillText('♪', 32, 34);
+  });
+  E.menuNotes = [];
+  for (let i = 0; i < 6; i++) {
+    const n = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, color: ['#ff9ac8', '#7fe0ff', '#ffe066'][i % 3], transparent: true, depthWrite: false }));
+    n.userData.t = i / 6 * 2.4;
+    g.add(n);
+    E.menuNotes.push(n);
+  }
+  return { group: g, t: 0, pose: zeroPose() };
+}
+
+// Tanz-Pose: Wippen im Takt, alle 8 Schläge ein neuer Move
+function danceTarget(t, out) {
+  for (const k of POSE_KEYS) out[k] = 0;
+  const b = t * 2.1, ph = b * Math.PI;       // ca. 126 Schläge pro Minute
+  const on = 1 - Math.abs(Math.sin(ph));     // 1 genau auf dem Schlag
+  const drop = 0.035 + 0.07 * on;
+  const a = Math.acos(1 - drop / 0.7);       // Knie beugen, Füße bleiben am Boden
+  out.hipsY = PORK_HIP - drop;
+  out.thL = out.thR = a; out.knL = out.knR = 2 * a; out.ftL = out.ftR = -a;
+  out.roll = Math.sin(ph / 2) * 0.1;
+  out.bodyX = Math.sin(ph / 2) * 0.05;
+  out.headP = -0.04 + on * 0.12;
+  out.belly = on * 0.025;
+  const move = Math.floor(b / 8) % 3;
+  if (move === 0) {          // Fäuste abwechselnd in die Luft
+    const uL = Math.max(0, Math.sin(ph)), uR = Math.max(0, -Math.sin(ph));
+    out.shL = -(0.6 + 2.0 * uL); out.shR = -(0.6 + 2.0 * uR);
+    out.shLz = 0.25; out.shRz = 0.25;
+    out.elL = 1.3 - uL * 1.1; out.elR = 1.3 - uR * 1.1;
+    out.yaw = Math.sin(ph) * 0.12;
+  } else if (move === 1) {   // Disco: rechter Arm zeigt hoch, dann runter, linke Hand an der Hüfte
+    const up = Math.sin(ph) > 0 ? 1 : 0;
+    out.shR = up ? -2.7 : -0.5; out.shRz = up ? 0.55 : 0.2; out.elR = 0.1;
+    out.shL = 0.15; out.shLz = 0.75; out.elL = 1.7;
+    out.roll += up ? -0.08 : 0.08;
+    out.headR = up ? -0.18 : 0.1;
+    out.yaw = up ? 0.2 : -0.1;
+  } else {                   // Flügel: Arme seitlich, Kopf wackelt
+    out.shL = -0.15; out.shR = -0.15;
+    out.shLz = 1.15 + Math.sin(ph * 2) * 0.35; out.shRz = 1.15 + Math.sin(ph * 2) * 0.35;
+    out.elL = 0.35; out.elR = 0.35;
+    out.headR = Math.sin(ph) * 0.22;
+    out.yaw = Math.sin(ph) * 0.28;
+    out.thL += Math.max(0, Math.sin(ph)) * 0.5; out.knL += Math.max(0, Math.sin(ph)) * 0.9;
+    out.thR += Math.max(0, -Math.sin(ph)) * 0.5; out.knR += Math.max(0, -Math.sin(ph)) * 0.9;
+  }
+  return { move, on, ph };
+}
+
+function menu3dEnter() {
+  if (!E) return;
+  r3Resize();
+  if (!E.menu) E.menu = buildMenuStage();
+  E.scene.add(E.menu.group);
+  const D = E.pork;
+  D.root.position.set(0, STAGE_Y + 0.14, 0);
+  D.root.rotation.set(0, Math.PI, 0);       // schaut zur Kamera
+  D.root.visible = true;
+  D.stars.visible = false; D.bee.visible = false;
+  D.legL.spring.visible = D.legR.spring.visible = false;
+  E.menu.t = 0;
+  E.menu.on = true;
+}
+function menu3dLeave() {
+  if (!E || !E.menu || !E.menu.on) return;
+  E.menu.on = false;
+  E.scene.remove(E.menu.group);
+  E.pork.root.rotation.set(0, 0, 0);
+  E.pork.body.position.x = 0;
+}
+
+const _dance = {};
+function menu3dFrame(dt) {
+  if (!E || !E.menu || !E.menu.on) return;
+  const Mn = E.menu, D = E.pork;
+  Mn.t += dt;
+  const t = Mn.t;
+  E.timeU.value += dt;
+  // Tanzen (weich überblendet)
+  const info = danceTarget(t, _dance);
+  const k = damp(16, dt);
+  for (const key of POSE_KEYS) Mn.pose[key] += (_dance[key] - Mn.pose[key]) * k;
+  applyPorkPose(D, Mn.pose);
+  for (const ear of D.ears) {
+    const d = ear.userData.d;
+    ear.rotation.set(0.08 * Math.sin(info.ph), 0, d * (0.25 + 0.4 * (1 - Math.abs(Math.sin(info.ph - 0.5)))));
+  }
+  setPorkExpr(D, info.move === 0 ? 'grin' : info.move === 1 ? (Math.sin(info.ph) > 0 ? 'wink' : 'smile') : 'happy');
+  const blink = (t % 3.3) < 0.11 ? 0.12 : 1;
+  for (const g of D.face.eyes) g.scale.y = blink;
+  for (const sp of E.menuSpeakers) sp.scale.setScalar(1 + info.on * 0.18);
+  for (const n of E.menuNotes) {
+    n.userData.t += dt;
+    const u = (n.userData.t % 2.4) / 2.4;
+    const i = E.menuNotes.indexOf(n);
+    n.position.set(-1.05 + Math.sin(u * 6 + i) * 0.35 - u * 0.4, STAGE_Y + 0.7 + u * 2.4, 0.15 - u * 0.3);
+    n.scale.setScalar(0.32 + u * 0.15);
+    n.material.opacity = u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85;
+  }
+  // Kamera: von vorne, Pork zwischen Titel und Start-Knopf, schwenkt leicht
+  const cam = E.camera;
+  const dist = 14.5, ang = Math.sin(t * 0.25) * 0.22;
+  cam.position.set(Math.sin(ang) * dist, STAGE_Y + 2.5, -Math.cos(ang) * dist);
+  _lv.set(0, STAGE_Y + 0.4, 0);
+  cam.lookAt(_lv);
+  if (Math.abs(cam.fov - 32) > 0.01) { cam.fov = 32; cam.updateProjectionMatrix(); }
+  // Himmel, Meer, Kulisse
+  E.sky.position.copy(cam.position);
+  E.sea.position.set(Math.round(cam.position.x / 20) * 20, SEA_Y, Math.round(cam.position.z / 20) * 20);
+  E.sea.material.uniforms.time.value = t;
+  E.ring.position.set(cam.position.x, 0, cam.position.z);
+  E.beamPivot.rotation.y = t * 0.6;
+  for (const b of E.boats) { b.rotation.z = Math.sin(t * 0.8 + b.userData.ph) * 0.05; b.position.y = 0.6 + Math.sin(t * 0.9 + b.userData.ph) * 0.25; }
+  _pv.set(0, STAGE_Y, 0);
+  E.sun.position.copy(_pv).addScaledVector(E.sunDir, 80);
+  E.sun.target.position.copy(_pv);
+  E.fill.position.copy(_pv).add(_tv.set(-E.sunDir.x * 40, 30, -E.sunDir.z * 40));
+  E.fill.target.position.copy(_pv);
+  E.renderer.render(E.scene, E.camera);
+}
+
+// 3D-Shop: schwarze Umrisse des 3D-Pork mit verschiedenen Accessoires
+function make3dSilhouette(variant) {
+  const D = E.pork, R = E.renderer, w = 240, h = 320;
+  const scene = new THREE.Scene();
+  const parent = D.root.parent;
+  const oldPos = D.root.position.clone(), oldRot = D.root.rotation.y;
+  scene.add(D.root);
+  D.root.position.set(0, 0, 0);
+  D.root.rotation.set(0, Math.PI + 0.35, 0);
+  const pose = {};
+  danceTarget([0.55, 4.55, 8.1][variant], pose);
+  applyPorkPose(D, pose);
+  const black = new THREE.MeshBasicMaterial({ color: '#000000' });
+  const acc = new THREE.Group();
+  const hc = 0.34;
+  if (variant === 0) {          // Cap
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), black);
+    cap.position.y = hc + 0.13; cap.scale.set(1.02, 0.75, 1.05);
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.34), black);
+    brim.position.set(0, hc + 0.15, 0.42);
+    acc.add(cap, brim);
+  } else if (variant === 1) {   // Krone
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.16, 20, 1, true), black);
+    ring.position.y = hc + 0.42;
+    acc.add(ring);
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * Math.PI * 2;
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 6), black);
+      c.position.set(Math.sin(a) * 0.2, hc + 0.58, Math.cos(a) * 0.2);
+      acc.add(c);
+    }
+  } else {                      // Kopfhörer
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 24, Math.PI), black);
+    band.position.y = hc + 0.02;
+    acc.add(band);
+    for (const d of [-1, 1]) {
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16), black);
+      cup.rotation.z = Math.PI / 2;
+      cup.position.set(d * 0.39, hc + 0.02, 0);
+      acc.add(cup);
+    }
+  }
+  D.head.add(acc);
+  scene.overrideMaterial = black;
+  const cam = new THREE.PerspectiveCamera(30, w / h, 0.1, 50);
+  cam.position.set(0, 1.2, -5.3);
+  cam.lookAt(0, 1.15, 0);
+  const rt = new THREE.WebGLRenderTarget(w, h);
+  const oldClear = R.getClearAlpha();
+  R.setClearColor(0x000000, 0);
+  R.setRenderTarget(rt);
+  R.clear();
+  R.render(scene, cam);
+  const buf = new Uint8Array(w * h * 4);
+  R.readRenderTargetPixels(rt, 0, 0, w, h, buf);
+  R.setRenderTarget(null);
+  R.setClearColor(0x000000, oldClear);
+  rt.dispose();
+  D.head.remove(acc);
+  acc.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  black.dispose();
+  parent.add(D.root);
+  D.root.position.copy(oldPos);
+  D.root.rotation.set(0, oldRot, 0);
+  // Maske -> dunkle Silhouette als Bild (Zeilen kommen von unten nach oben)
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const img = g.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const si = ((h - 1 - y) * w + x) * 4, di = (y * w + x) * 4;
+      if (buf[si + 3] > 10) { img.data[di] = 26; img.data[di + 1] = 16; img.data[di + 2] = 24; img.data[di + 3] = 255; }
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return c.toDataURL();
 }
 
 function r3Exit() {

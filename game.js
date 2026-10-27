@@ -1426,9 +1426,10 @@ const store = {
    2. im dauerhaften Server-Speicher des Spiel-Links (pro Person, übersteht jedes Update).
    Beim Start werden beide zusammengeführt, und zwar so, dass nie etwas verloren geht:
    Zahlen nehmen immer den höheren Wert, Listen (gekaufte Skins) werden vereinigt.
-   Die Währung (früher Trüffel, jetzt Handys) wird deshalb als "verdient" und
-   "ausgegeben" getrennt gezählt (beide wachsen nur).
-   Kontostand = earned (Run, alte Trüffel) + phones (3D Run) − spent. */
+   Die Währung (Handys) wird deshalb als "verdient" und "ausgegeben" getrennt
+   gezählt (beide wachsen nur). 2D und 3D haben getrennte Konten und Shops:
+   2D-Konto = earned (Run + alte Trüffel) − spent,
+   3D-Konto = phones (3D Jump 'n' Run) − spent3d. */
 const save = {
   best: store.get('porkjump_best', 0),
   bestRun: store.get('porkjump_best_run', 0),
@@ -1437,12 +1438,15 @@ const save = {
   owned: store.get('porkjump_owned', []),         // gekaufte Skins/Sachen (für den Shop)
   best3d: store.get('porkjump_best_3d', 0),       // 3D Run: weiteste Strecke
   phones: store.get('porkjump_phones_total', 0),  // 3D Run: alle gesammelten Handys
-  bestPhones: store.get('porkjump_best_phones', 0)
+  bestPhones: store.get('porkjump_best_phones', 0),
+  spent3d: store.get('porkjump_spent_3d', 0),      // 3D-Shop: ausgegebene Handys
+  owned3d: store.get('porkjump_owned_3d', [])      // 3D-Shop: gekaufte Skins
 };
 let best = save.best;
 let bestRun = save.bestRun;
-const walletNow = () => save.earned + save.phones - save.spent;
-let truffleBank = walletNow();                 // Handy-Währung über alle Runden
+const walletNow = () => save.earned - save.spent;            // 2D-Konto (Classic + Run)
+const wallet3dNow = () => save.phones - save.spent3d;         // 3D-Konto
+let truffleBank = walletNow();
 let soundOn = store.get('porkjump_sound', true);
 
 function mergeSave(other) {
@@ -1456,6 +1460,8 @@ function mergeSave(other) {
   save.best3d = Math.max(save.best3d, num(other.best3d));
   save.phones = Math.max(save.phones, num(other.phones));
   save.bestPhones = Math.max(save.bestPhones, num(other.bestPhones));
+  save.spent3d = Math.max(save.spent3d, num(other.spent3d));
+  if (Array.isArray(other.owned3d)) for (const k of other.owned3d) if (!save.owned3d.includes(k)) save.owned3d.push(k);
   best = save.best;
   bestRun = save.bestRun;
   truffleBank = walletNow();
@@ -1471,6 +1477,8 @@ function saveLocal() {
   store.set('porkjump_best_3d', save.best3d);
   store.set('porkjump_phones_total', save.phones);
   store.set('porkjump_best_phones', save.bestPhones);
+  store.set('porkjump_spent_3d', save.spent3d);
+  store.set('porkjump_owned_3d', save.owned3d);
 }
 
 // Server-Speicher (nur im Spiel-Link vorhanden; lokal geöffnet läuft alles nur über den Browser)
@@ -1481,7 +1489,7 @@ async function pushCloud() {
   cloudSave.busy = true;
   try {
     await cloudSave.ref.set({ best: save.best, bestRun: save.bestRun, earned: save.earned, spent: save.spent, owned: save.owned,
-      best3d: save.best3d, phones: save.phones, bestPhones: save.bestPhones, v: 1 });
+      best3d: save.best3d, phones: save.phones, bestPhones: save.bestPhones, spent3d: save.spent3d, owned3d: save.owned3d, v: 1 });
   } catch (e) {
     if (e && e.code === 'invalid_argument') cloudSave.ref = null;   // diese Person darf hier nicht speichern
   }
@@ -1512,7 +1520,8 @@ async function initCloudSave() {
     cloudSave.ref = ref;
     const same = remote && remote.best === save.best && remote.bestRun === save.bestRun && remote.earned === save.earned &&
       remote.spent === save.spent && Array.isArray(remote.owned) && remote.owned.length === save.owned.length &&
-      remote.best3d === save.best3d && remote.phones === save.phones && remote.bestPhones === save.bestPhones;
+      remote.best3d === save.best3d && remote.phones === save.phones && remote.bestPhones === save.bestPhones &&
+      remote.spent3d === save.spent3d && Array.isArray(remote.owned3d) && remote.owned3d.length === save.owned3d.length;
     if (!same) pushCloud();
   } catch (e) { /* kein Server-Speicher: Browser-Speicher reicht */ }
 }
@@ -2873,7 +2882,6 @@ function bankPhones3d() {
   if (add <= 0) return;
   r3.banked = r3.phonesN;
   save.phones += add;
-  truffleBank = walletNow();
   saveProgress();
 }
 
@@ -2882,7 +2890,9 @@ function refreshBests() {
   $('shopWallet').textContent = truffleBank;
   $('bestClassic').textContent = `Classic ${best} m`;
   $('bestRun').textContent = `Run ${bestRun} m`;
-  $('best3d').textContent = `3D Run ${save.best3d} m`;
+  $('wallet3dVal').textContent = wallet3dNow();
+  $('shop3dWallet').textContent = wallet3dNow();
+  $('best3d').textContent = `3D Jump 'n' Run ${save.best3d} m`;
 }
 
 function startGame() {
@@ -2972,7 +2982,7 @@ function gameOver3d() {
   setPlayUi(false);
   el.overScore.textContent = `${meters} m`;
   show(el.overExtra, true);
-  el.overExtra.textContent = `+${phones} Handys (gesamt ${truffleBank})`;
+  el.overExtra.textContent = `+${phones} Handys (gesamt ${wallet3dNow()})`;
   el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${save.best3d} m`;
   el.overBest.classList.toggle('record', isRecord);
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 1300);
@@ -2988,9 +2998,41 @@ function toMenu() {
   setPlayUi(false);
   show(el.pause, false);
   show(el.over, false);
-  show(el.menu, true);
   refreshBests();
-  initDemo();
+  showMenuSide();
+}
+
+/* ---------- Zwei Menü-Seiten: 2D (Classic + Run) und 3D (3D Jump 'n' Run) ----------
+   Jede Seite hat ihr eigenes Handy-Konto und ihren eigenen Shop. */
+let menuSide = store.get('porkjump_menu_side', '2d') === '3d' ? '3d' : '2d';
+function showMenuSide() {
+  const is3d = menuSide === '3d' && typeof E !== 'undefined' && E;
+  show(el.menu, !is3d);
+  show($('menu3d'), !!is3d);
+  show(canvas, !is3d);
+  show($('game3d'), !!is3d);
+  if (is3d) menu3dEnter(); else initDemo();
+}
+async function goMenu3d() {
+  if (!(await ensure3d())) return;
+  if (state !== 'menu') return;
+  menuSide = '3d';
+  store.set('porkjump_menu_side', '3d');
+  refreshBests();
+  showMenuSide();
+}
+function goMenu2d() {
+  menuSide = '2d';
+  store.set('porkjump_menu_side', '2d');
+  if (typeof E !== 'undefined' && E) menu3dLeave();
+  showMenuSide();
+}
+function openModes() {
+  const is3d = menuSide === '3d';
+  show($('btnClassic'), !is3d);
+  show($('btnRun'), !is3d);
+  show($('btnRun3d'), is3d);
+  show(el.modeSelect, true);
 }
 
 function updateHud() {
@@ -3023,13 +3065,18 @@ function tap(id, fn) {
   $(id).addEventListener('click', e => { e.preventDefault(); Sound.init(); Sound.click(); fn(); });
 }
 const retry = () => (mode === 'run3d' ? startRun3d() : mode === 'run' ? startRun() : startGame());
-tap('btnStart', () => show(el.modeSelect, true));
+tap('btnStart', openModes);
+tap('btnStart3d', openModes);
+tap('btnGo3d', goMenu3d);
+tap('btnGo2d', goMenu2d);
 tap('btnClassic', startGame);
 tap('btnRun', () => startRun());
 tap('btnRun3d', () => startRun3d());
 tap('btnModeBack', () => show(el.modeSelect, false));
 tap('btnShop', openShop);
 tap('btnShopBack', () => show($('shop'), false));
+tap('btnShop3d', openShop3d);
+tap('btnShop3dBack', () => show($('shop3d'), false));
 
 /* ---------- Shop (Vorschau): Skins als schwarze Umrisse ---------- */
 // Pork wird auf das Spiel-Canvas gemalt, ausgeschnitten und komplett schwarz gefärbt.
@@ -3069,15 +3116,23 @@ function makeSilhouette(variant) {
 }
 function openShop() {
   refreshBests();
-  document.querySelectorAll('.skin-pic img').forEach(img => {
+  document.querySelectorAll('#shop .skin-pic img').forEach(img => {
     if (!img.src) img.src = makeSilhouette(+img.dataset.variant);
   });
   show($('shop'), true);
+}
+function openShop3d() {
+  refreshBests();
+  document.querySelectorAll('#shop3d .skin-pic img').forEach(img => {
+    if (!img.src) { try { img.src = make3dSilhouette(+img.dataset.variant3d); } catch (e) { /* ohne Bild */ } }
+  });
+  show($('shop3d'), true);
 }
 tap('btnRetry', retry);
 tap('btnOverMenu', toMenu);
 tap('btnToMenu', toMenu);
 tap('btnGear', () => show(el.settings, true));
+tap('btnGear3d', () => show(el.settings, true));
 tap('btnCloseSettings', () => show(el.settings, false));
 
 /* ---------- Spielstand-Code (Gerätewechsel) ---------- */
@@ -3088,7 +3143,7 @@ function checksum(str) {
   return (h >>> 0).toString(36);
 }
 function exportSave() {
-  const body = JSON.stringify({ b: save.best, r: save.bestRun, e: save.earned, s: save.spent, o: save.owned, b3: save.best3d, ph: save.phones, bp: save.bestPhones });
+  const body = JSON.stringify({ b: save.best, r: save.bestRun, e: save.earned, s: save.spent, o: save.owned, b3: save.best3d, ph: save.phones, bp: save.bestPhones, s3: save.spent3d, o3: save.owned3d });
   return 'PJ1-' + btoa(unescape(encodeURIComponent(body))) + '-' + checksum(body);
 }
 function importSave(code) {
@@ -3099,7 +3154,7 @@ function importSave(code) {
   if (checksum(body) !== m[2]) return false;
   let d;
   try { d = JSON.parse(body); } catch (e) { return false; }
-  mergeSave({ best: d.b, bestRun: d.r, earned: d.e, spent: d.s, owned: d.o, best3d: d.b3, phones: d.ph, bestPhones: d.bp });
+  mergeSave({ best: d.b, bestRun: d.r, earned: d.e, spent: d.s, owned: d.o, best3d: d.b3, phones: d.ph, bestPhones: d.bp, spent3d: d.s3, owned3d: d.o3 });
   saveProgress();
   refreshBests();
   return true;
@@ -3116,7 +3171,7 @@ tap('btnSaveExport', () => {
   } catch (e) { saveMsg('Code markiert, bitte kopieren.'); }
 });
 tap('btnSaveImport', () => {
-  saveMsg(importSave($('saveCode').value) ? `Geladen! Du hast jetzt ${truffleBank} Handys.` : 'Der Code stimmt nicht. Bitte komplett kopieren.');
+  saveMsg(importSave($('saveCode').value) ? `Geladen! Du hast jetzt ${truffleBank} Handys (2D) und ${wallet3dNow()} Handys (3D).` : 'Der Code stimmt nicht. Bitte komplett kopieren.');
 });
 el.btnPause.addEventListener('pointerdown', e => {
   e.preventDefault();
@@ -3174,7 +3229,7 @@ window.addEventListener('keydown', e => {
   }
   if ((e.key === 'Enter' || e.key === ' ') && (state === 'menu' || state === 'over')) {
     Sound.init();
-    retry();
+    if (state === 'menu' && menuSide === '3d') startRun3d(); else retry();
   }
 });
 window.addEventListener('keyup', e => {
@@ -3198,6 +3253,7 @@ function frame(ts) {
   if (last === null) last = ts;
   const dt = Math.min(0.05, (ts - last) / 1000);
   last = ts;
+  if (state === 'menu' && menuSide === '3d') { menu3dFrame(dt); return; }
   if (mode === 'run3d' && state !== 'menu') { r3Frame(dt); return; }
   if (state === 'playing') {
     // Bildzeit in gleich große Physik-Schritte (max. STEP) teilen: kein Ruckeln durch 1/2/3 Schritte pro Bild
@@ -3223,5 +3279,11 @@ $('version').textContent = `Version ${VERSION}`;
 refreshSoundButtons();
 initDemo();
 requestAnimationFrame(frame);
+// zuletzt im 3D-Menü gewesen: erst wechseln, wenn auch run3d.js geladen ist
+if (menuSide === '3d') {
+  menuSide = '2d';
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', goMenu3d);
+  else setTimeout(goMenu3d, 0);
+}
 // Wenn die Comic-Schrift geladen ist, einmal neu zeichnen lassen
 if (document.fonts) document.fonts.ready.then(() => bgCache.clear());
