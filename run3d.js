@@ -358,6 +358,42 @@ function makeTextures() {
     g.textBaseline = 'middle';
     g.fillText('EIS', w / 2, h / 2 + 3);
   });
+  // Kiosk-Vorderseite: helles Fenster mit Eis-Theke
+  T.kioskFront = canvasTex(256, 144, (g, w, h) => {
+    const bg = g.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#d8f6ff');
+    bg.addColorStop(1, '#9fe0f2');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, w, h);
+    // Preistafel
+    g.fillStyle = '#ff5fa2';
+    g.fillRect(70, 12, 116, 30);
+    g.font = 'bold 22px "Luckiest Guy", Arial Black, sans-serif';
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('1 KUGEL 1€', 128, 28, 108);
+    // zwei große Waffeln links und rechts
+    for (const [x, c] of [[34, '#ff9ac8'], [222, '#9be8b0']]) {
+      g.fillStyle = '#d99a52';
+      g.beginPath(); g.moveTo(x - 16, 52); g.lineTo(x + 16, 52); g.lineTo(x, 96); g.closePath(); g.fill();
+      g.fillStyle = c;
+      g.beginPath(); g.arc(x, 48, 18, 0, Math.PI * 2); g.fill();
+    }
+    // Eis-Wannen in der Theke
+    g.fillStyle = '#ffffff';
+    g.fillRect(14, 100, w - 28, 34);
+    const cols = ['#ff9ac8', '#9be8b0', '#ffe066', '#8a5a3c', '#8fd3ff', '#ff6b6b'];
+    cols.forEach((c, i) => {
+      const x = 32 + i * 38.5;
+      g.fillStyle = c;
+      g.beginPath(); g.arc(x, 112, 15, Math.PI, 0); g.fill();
+      g.fillRect(x - 15, 112, 30, 16);
+    });
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = 8;
+    g.strokeRect(4, 4, w - 8, h - 8);
+  });
   T.beachSign = canvasTex(256, 96, (g, w, h) => {
     g.fillStyle = '#2b6cb0';
     g.fillRect(0, 0, w, h);
@@ -696,6 +732,7 @@ function makeMaterials() {
   M.wood = std('#ffffff', 0.8, { map: E.tex.wood });
   M.lamp = new THREE.MeshStandardMaterial({ color: '#ffb020', emissive: '#ff8a00', emissiveIntensity: 1.4, roughness: 0.4 });
   M.gateSign = std('#ffffff', 0.6, { map: E.tex.gateSign });
+  M.kioskFront = std('#ffffff', 0.4, { map: E.tex.kioskFront, emissive: '#ffffff', emissiveMap: E.tex.kioskFront, emissiveIntensity: 0.35 });
   M.kioskSign = std('#ffffff', 0.6, { map: E.tex.kioskSign, emissive: '#ffffff', emissiveMap: E.tex.kioskSign, emissiveIntensity: 0.25 });
   M.beachSign = std('#ffffff', 0.6, { map: E.tex.beachSign });
   M.phoneBody = new THREE.MeshStandardMaterial({ color: '#f29ab8', roughness: 0.3, metalness: 0.75, emissive: '#5a1838', emissiveIntensity: 0.35 });
@@ -1865,7 +1902,8 @@ function buildObstacle(kind) {
     add(new THREE.BoxGeometry(2.1, 2.1, 2.1), M.plastic, 0, 1.05, 0);
     const stripe = new THREE.MeshStandardMaterial({ color: '#7fd3e8', roughness: 0.5 });
     add(new THREE.BoxGeometry(2.12, 0.35, 2.12), stripe, 0, 0.5, 0);
-    add(new THREE.BoxGeometry(1.6, 0.9, 0.06), M.dark, 0, 1.4, -1.06);
+    add(new THREE.PlaneGeometry(1.7, 0.96), M.kioskFront, 0, 1.43, -1.062, 0, Math.PI);   // Fenster mit Eis-Theke
+    add(new THREE.BoxGeometry(2.0, 0.1, 0.4), M.wood, 0, 0.92, -1.22);                   // Verkaufstresen
     add(new THREE.BoxGeometry(2.4, 0.08, 1.0), M.canopy, 0, 2.05, -1.4, -0.35);
     add(new THREE.BoxGeometry(2.0, 0.6, 0.1), M.kioskSign, 0, 2.5, -1.0);
     // großes Eis auf dem Dach
@@ -2392,7 +2430,7 @@ function runPattern(pat, s, v, d, type) {
     case 'power': {
       r3.gen.lastPower = s;
       const lane = free();
-      const type2 = Math.random() < 0.5 ? 'shoes' : 'bee';
+      const type2 = Math.random() < 0.3 ? 'bee' : 'shoes';   // Biene 40 % seltener als früher (50 % → 30 %)
       phoneLine(s - 18, lane, 6);
       spawnPickup(type2, s, lane);
       return v * 1.2;
