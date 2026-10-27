@@ -30,11 +30,12 @@ const R3 = {
   HEARTS: 3,
   INVULN: 1.6,
   SHOES_T: 10,
-  BEE_T: 6,
+  BEE_T: 10.5,          // Bienenflug: 3x so schnell und ca. 5x so weit wie früher (6 s bei normalem Tempo)
+  BEE_SPEED: 3,
   BEE_H: 4.6,           // Flughöhe mit der Biene
   VIEW: 210,            // so weit voraus wird gebaut
   CHUNK: 30,
-  ACTIVATE: 72,         // ab dieser Entfernung laufen Gegner los
+  ACTIVATE: 105,        // ab dieser Entfernung laufen Gegner los
   STAND_H: 1.7,
   SLIDE_H: 0.8,
   HALF_W: 0.42
@@ -399,6 +400,24 @@ function makeTextures() {
     gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr;
     g.fillRect(0, 0, w, h);
+  });
+  // Lichtsäule über Items (unten hell, oben durchsichtig)
+  T.beam = canvasTex(16, 128, (g, w, h) => {
+    const gr = g.createLinearGradient(0, h, 0, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,0.95)');
+    gr.addColorStop(0.25, 'rgba(255,255,255,0.45)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+  });
+  // rotes Warnzeichen über Gegnern
+  T.warn = canvasTex(64, 64, (g, w, h) => {
+    g.fillStyle = '#ff2a3a';
+    g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.fill();
+    g.lineWidth = 5; g.strokeStyle = '#ffffff'; g.stroke();
+    g.fillStyle = '#ffffff';
+    g.fillRect(28, 13, 8, 26);
+    g.fillRect(28, 44, 8, 8);
   });
   T.foam = canvasTex(64, 256, (g, w, h) => {
     const r = rng(17);
@@ -1799,7 +1818,7 @@ const OBS = {
   gate: { hw: 1.15, hd: 0.25, bottom: 1.12, top: 9, lethal: false },
   kiosk: { hw: 1.05, hd: 1.1, bottom: 0, top: 9, lethal: true },
   container: { hw: 1.05, hd: 1.1, bottom: 0, top: 9, lethal: true },
-  crab: { hw: 0.75, hd: 0.5, bottom: 0, top: 0.75, lethal: false, speed: 4.5 },
+  crab: { hw: 0.85, hd: 0.6, bottom: 0, top: 0.9, lethal: false, speed: 4.5 },
   gull: { hw: 0.7, hd: 0.45, bottom: 1.05, top: 1.75, lethal: false, speed: 6 },
   buggy: { hw: 1.0, hd: 1.4, bottom: 0, top: 9, lethal: true, speed: 8 }
 };
@@ -1940,6 +1959,20 @@ function buildObstacle(kind) {
   }
   g.userData.kind = kind;
   mergeStatic(g);
+  if (OBS[kind].speed) {
+    // Warnzeichen + roter Schein, damit man Gegner früh kommen sieht
+    const fx = { depthWrite: false, transparent: true };
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map: E.tex.glow, color: '#ff3040', opacity: 0.85, blending: THREE.AdditiveBlending }, fx)));
+    glow.scale.set(2.6, 2.6, 1);
+    glow.position.y = OBS[kind].top * 0.5 + 0.2;
+    const warn = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map: E.tex.warn }, fx)));
+    warn.scale.set(0.8, 0.8, 1);
+    warn.position.y = warn.userData.y0 = (kind === 'buggy' ? 2.4 : OBS[kind].top) + 0.9;
+    g.add(glow, warn);
+    g.userData.warn = warn;
+    g.userData.wglow = glow;
+  }
+  if (kind === 'crab') g.scale.setScalar(1.3);
   return g;
 }
 
@@ -1957,7 +1990,7 @@ let _vObs;
 function placeObstacle(o) {
   const p = worldAt(o.s, o.x, 0, _vObs, _tp1);
   o.mesh.position.copy(_vObs);
-  o.mesh.rotation.set(0, p.yaw + Math.PI, 0);   // Vorderseite zum Spieler
+  o.mesh.rotation.set(0, p.yaw, 0);   // Vorderseite (lokal -z) zum Spieler
 }
 function releaseObstacle(o) {
   E.scene.remove(o.mesh);
@@ -1984,7 +2017,7 @@ function buildPhones() {
   const back = new THREE.CircleGeometry(0.06, 12);
   back.rotateY(Math.PI);
   back.translate(-0.13, 0.33, -0.065);
-  const CAP = 90;
+  const CAP = 140;
   E.phoneBody = new IPool(body, E.mat.phoneBody, CAP, false);
   E.phoneScreen = new IPool(screen, E.mat.phoneScreen, CAP, false);
   E.scene.add(E.phoneBody.mesh, E.phoneScreen.mesh);
@@ -2081,14 +2114,38 @@ function buildShoesPickup() {
   }
   return g;
 }
+// Items sollen schon von weitem auffallen: Lichtsäule, Schein, Ringe, Funken
 function pickupHalo(color) {
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.tex.glow, color, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
-  s.scale.set(2.6, 2.6, 1);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.04, 8, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 }));
-  ring.rotation.x = Math.PI / 2;
+  const add = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending };
   const g = new THREE.Group();
-  g.add(s, ring);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map: E.tex.glow, color, opacity: 1 }, add)));
+  s.scale.set(3.4, 3.4, 1);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.62, 16, 16, 1, true),
+    new THREE.MeshBasicMaterial(Object.assign({ map: E.tex.beam, color, opacity: 0.8, side: THREE.DoubleSide }, add)));
+  beam.position.y = -0.95 + 8;
+  const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.045, 8, 36), ringMat);
+  ring.rotation.x = Math.PI / 2;
+  const floor = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.06, 8, 40), ringMat);
+  floor.rotation.x = Math.PI / 2;
+  floor.position.y = -0.85;
+  const sparks = [];
+  for (let i = 0; i < 4; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({ map: E.tex.glow, color: '#ffffff', opacity: 1 }, add)));
+    sp.scale.set(0.45, 0.45, 1);
+    sp.userData.a = i * Math.PI / 2;
+    sparks.push(sp);
+    g.add(sp);
+  }
+  g.add(s, beam, ring, floor);
+  g.userData.fx = { glow: s, beam, ring, floor, sparks };
   return g;
+}
+
+// Tempo-Faktor der Biene nach t Sekunden Flug: sanft auf 3x und am Ende zurück
+function beeBoost(t) {
+  const k = Math.min(r3clamp(t / 0.8, 0, 1), r3clamp((R3.BEE_T - t) / 0.9, 0, 1));
+  return 1 + (R3.BEE_SPEED - 1) * smooth01(k);
 }
 
 /* ---------- Power-ups (Liste – neue lassen sich leicht ergänzen) ---------- */
@@ -2118,13 +2175,17 @@ const POWERUPS = {
       P.slideT = 0;
       Sound.startBuzz();
       showR3Msg('BIENEN-FLUG!', 1.0);
-      // Handy-Spur in der Luft
-      const v = r3.speed;
-      let lane = P.lane;
-      for (let t = 0.7; t < R3.BEE_T - 0.6; t += 0.17) {
-        if (Math.random() < 0.06) lane = r3clamp(lane + (Math.random() < 0.5 ? -1 : 1), -1, 1);
-        spawnPhone(P.s + v * t, lane * R3.LANE_W, R3.BEE_H + 0.95);
+      // Handy-Spur in der Luft entlang der (schnellen) Flugbahn
+      let lane = P.lane, ds = 0, next = 14;
+      const s0 = P.s;
+      for (let t = 0; t < R3.BEE_T - 0.6; t += 0.05) {
+        ds += speedAt(s0 + ds) * beeBoost(t) * 0.05;
+        if (ds < next) continue;
+        next += 8;
+        if (Math.random() < 0.12) lane = r3clamp(lane + (Math.random() < 0.5 ? -1 : 1), -1, 1);
+        spawnPhone(s0 + ds, lane * R3.LANE_W, R3.BEE_H + 0.95);
       }
+      extendTrack(r3.track, s0 + ds + R3.VIEW);
     },
     end(P) {
       Sound.stopBuzz();
@@ -2145,6 +2206,7 @@ function spawnPickup(type, s, lane) {
     halo.position.y = 0.95;
     mesh.add(halo);
     mesh.userData.model = model;
+    mesh.userData.fx = halo.userData.fx;
   }
   E.scene.add(mesh);
   const it = { type, s, lane, x: lane * R3.LANE_W, mesh, taken: false, t: 0 };
@@ -2207,7 +2269,7 @@ function genContent(upTo) {
     if (d > 0.25) opts.push(['slalom', 2 * d]);
     if (d > 0.18) opts.push(['jumpSlide', 1.6 * d]);
     if (s > 260) opts.push(['enemy', 1.4 + d]);
-    if (s - C.lastPower > 380 && r3.pl.shoesT <= 0 && r3.pl.beeT <= 0) opts.push(['power', 3]);
+    if (s - C.lastPower > 170 && r3.pl.shoesT <= 0 && r3.pl.beeT <= 0) opts.push(['power', 5]);
     let tot = 0;
     for (const o of opts) tot += o[1];
     let r = Math.random() * tot, pat = 'single';
@@ -2468,7 +2530,7 @@ async function startRun3d() {
   r3 = {
     track: newTrack(), chunks: [], obs: [], phones: [], items: [], hints: [],
     gen: { s: 20, tutorial: 0, lastPower: 120 },
-    t: 0, speed: 0, phonesN: 0, combo: 0, lastPhoneT: -9, shake: 0, overT: 0,
+    t: 0, speed: 0, baseSpeed: 0, phonesN: 0, combo: 0, lastPhoneT: -9, shake: 0, overT: 0,
     hud: {}, intro: 1.1
   };
   r3.pl = {
@@ -2594,7 +2656,8 @@ function r3Update(dt) {
   if (P.dead) { P.deadT += dt; return; }
   // Tempo (am Anfang kurz anlaufen)
   const target = speedAt(P.s);
-  r3.speed = r3.intro > 0 ? target * (1 - r3.intro / 1.1 * 0.6) : target;
+  r3.baseSpeed = r3.intro > 0 ? target * (1 - r3.intro / 1.1 * 0.6) : target;
+  r3.speed = r3.baseSpeed * (P.beeT > 0 ? beeBoost(R3.BEE_T - P.beeT) : 1);
   if (r3.intro > 0) r3.intro -= dt;
   P.s += r3.speed * dt;
   P.phase += dt * Math.PI * 2 * (1.55 + r3.speed * 0.055);
@@ -2752,7 +2815,9 @@ function updateCamera(dt) {
   const P = r3.pl, cam = E.camera;
   const bee = P.beeT > 0 ? 1 : 0;
   // hinter und über Pork, schaut ein Stück voraus – folgt Kurven und Höhen
-  const back = CAM_BACK + bee * 2.2, up = CAM_UP + P.y * 0.55 + bee * 1.2;
+  // beim schnellen Bienenflug hinkt die weiche Kamera sonst weit hinterher
+  const lag = r3.baseSpeed > 0 ? (r3.speed - r3.baseSpeed) / 9 : 0;
+  const back = CAM_BACK + bee * 0.8 - lag, up = CAM_UP + P.y * 0.8 + bee * 0.4;
   worldAt(P.s - back, P.x * 0.6, up, _cv);
   worldAt(P.s + CAM_AHEAD, P.x * 0.75, CAM_LOOK_H + P.y * 0.65, _lv);
   if (P.dead) {
@@ -2786,7 +2851,7 @@ function updateCamera(dt) {
     cam.position.x += (Math.random() - 0.5) * r3.shake * 0.5;
     cam.position.y += (Math.random() - 0.5) * r3.shake * 0.5;
   }
-  const fov = 60 + (r3.speed - R3.SPEED0) * 0.45 + bee * 6;
+  const fov = 60 + (r3.baseSpeed - R3.SPEED0) * 0.45 + bee * 6 + (r3.speed / r3.baseSpeed - 1) * 5;
   if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * damp(3, dt); cam.updateProjectionMatrix(); }
 }
 
@@ -2807,6 +2872,14 @@ function updateWorld(dt) {
     if (o.s < P.s - 18 || o.gone) { releaseObstacle(o); r3.obs.splice(i, 1); continue; }
     o.mesh.visible = P.dead || o.s > P.s - 1.6 || !!o.fly;
     const u = o.mesh.userData;
+    if (u.warn) {   // Warnzeichen blinkt, solange der Gegner kommt
+      const on = !o.hit && o.s > P.s + 2;
+      u.warn.visible = u.wglow.visible = on;
+      const pz = 1 + Math.abs(Math.sin(r3.t * 6)) * 0.3;
+      u.warn.scale.set(0.8 * pz, 0.8 * pz, 1);
+      u.wglow.material.opacity = 0.55 + Math.abs(Math.sin(r3.t * 6)) * 0.4;
+      u.warn.position.y = u.warn.userData.y0 + Math.sin(r3.t * 3) * 0.12;
+    }
     if (o.kind === 'crab') {
       const k = o.active ? 14 : 3;
       u.legs.forEach((lg, j) => { lg.rotation.x = Math.sin(o.t * k + j) * 0.5; });
@@ -2837,6 +2910,16 @@ function updateWorld(dt) {
     it.mesh.position.copy(_tv);
     it.mesh.userData.model.rotation.y = it.t * 2;
     it.mesh.rotation.y = q.yaw;
+    const fx = it.mesh.userData.fx, pulse = 1 + Math.sin(it.t * 7) * 0.18;
+    fx.glow.scale.set(3.4 * pulse, 3.4 * pulse, 1);
+    fx.beam.material.opacity = 0.55 + Math.sin(it.t * 5) * 0.25;
+    fx.ring.rotation.z = it.t * 1.5;
+    fx.ring.position.y = Math.sin(it.t * 2.4) * 0.35;
+    fx.floor.scale.setScalar(1 + (it.t * 0.8 % 1) * 0.5);
+    for (const sp of fx.sparks) {
+      const a = sp.userData.a + it.t * 2.6;
+      sp.position.set(Math.cos(a) * 1.0, Math.sin(it.t * 3 + sp.userData.a) * 0.5, Math.sin(a) * 1.0);
+    }
   }
   // Handys: drehen, schweben, Sammel-Animation
   const ga = E.phoneGlow.geometry.attributes.position.array;

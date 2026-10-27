@@ -19,7 +19,7 @@ Hochkant endless Jump 'n' Run mit John Pork in der Hauptrolle
 Aktuelle Version: **2.0**. Alle Änderungen stehen in [PATCHNOTES.md](PATCHNOTES.md).
 
 - **Drei Modi:** Classic (endlos nach oben), Run (endlos nach rechts) und 3D Run (3D-Strand-Runner), jeweils mit eigenem Rekord
-- **3D Run:** 3 Spuren mit Kurven und Hügeln, Sprung-, Slide- und Block-Hindernisse, entgegenkommende Gegner, Handys zum Sammeln (zählen aufs Konto), Power-ups **Federschuhe** und **Biene**
+- **3D Run:** 3 Spuren mit Kurven und Hügeln, Sprung-, Slide- und Block-Hindernisse, entgegenkommende Gegner, Handys zum Sammeln (zählen aufs Konto), Power-ups **Federschuhe** und **Biene** (Biene: 3x so schnell, fliegt ca. 5x so weit), Items mit Lichtsäule, Gegner mit Warnzeichen
 - **11 Comic-Welten**, alle 400 m ein Wechsel in zufälliger Reihenfolge: Strand bei Sonnenaufgang, Zauberwald, Verschneite Berge, Chinesisches Neujahr, Canyon bei Sonnenuntergang, Dunkle Grotte, Land der Süßigkeiten, Giftlabor, Wolkenkönigreich, Polarlichter bei Nacht, Weltall
 - **Classic:** zufällige Plattformen, die mit der Höhe schwerer werden. Gegenstände: **Trampolin** (Mega-Sprung), **Federschuhe** (15 s doppelt so hohe Sprünge, ab und zu ein Salto), **Biene** (trägt dich 3 s nach oben), **Handy** (sehr selten: John Pork ruft an, ein Heli zieht dich 420 m hoch)
 - **Run:** Abgründe, Plattform-Brücken, Hindernisse mit eigenem Look je Welt, 3 Herzen, Handys zum Sammeln. Items: **Magnet**, **Schild**, **Sau-Turbo**, **Herz**. Gegner kann man durch Draufspringen besiegen
