@@ -1,5 +1,34 @@
 # Pork Jump – Patchnotes
 
+## Version 2.0: 3D Run
+
+### Neuer Modus: 3D Run
+- **Echter 3D-Endlos-Runner** im Hauptmenü unter „Start → 3D Run“. Pork rennt automatisch über einen Strand bei Sonnenuntergang: Promenade, Sand, Holzsteg und Baustelle. Die Strecke hat Kurven und sanfte Hügel.
+- **3 Spuren**, die den Kurven folgen. Das Tempo steigt langsam an.
+- **Steuerung:** irgendwo auf dem Bildschirm wischen. Links/rechts wechselt die Spur, hoch springt, runter slidet (in der Luft: schnell runter und direkt sliden). Am PC Pfeiltasten oder WASD und Leertaste.
+- **Hindernisse:**
+  - Absperrungen und Kisten musst du überspringen.
+  - Unter Durchgängen mit „DUCKEN“ musst du sliden.
+  - Kioske, Container und Strand-Buggys musst du umlaufen, sonst ist die Runde sofort vorbei.
+  - Es sind nie alle 3 Spuren gleichzeitig zu.
+- **Gegner kommen dir entgegen:** Krabben, Möwen und Buggys.
+- **3 Herzen:** Kleine Treffer kosten ein Herz, danach blinkst du kurz und bist unverwundbar.
+- **Handys sammeln:** Sie liegen in Reihen, Bögen und Spurwechsel-Mustern. Die Handys haben einen eigenen Zähler, einen eigenen Rekord und eine Gesamt-Statistik. Deine Trüffel bleiben davon unberührt.
+- **Power-ups:**
+  - **Federschuhe** (10 s): riesige Sprünge mit Salto und Handys hoch in der Luft.
+  - **Biene** (6 s): trägt Pork über alles hinweg durch eine Handy-Spur am Himmel.
+- **Dynamische Kamera:** Beim Start fliegt sie von vorne ein. In Kurven neigt sie sich mit, bei Treffern wackelt sie, und beim Game Over kreist sie um Pork.
+- **Lebendige Welt:** Meer mit Wellen und Sonnenglitzern, Leuchtturm mit drehendem Licht, Boote, Wolken und Palmen im Wind.
+- **Grafik-Stufen:** Ruckelt es, schaltet das Spiel die Grafik automatisch eine Stufe runter.
+- **Rekord** für 3D Run im Pokal-Bereich im Menü.
+
+### Dein Spielstand
+- Trüffel, Rekorde, Skins und Classic- und Run-Fortschritt bleiben komplett erhalten. Für 3D Run kommen nur neue Speicherplätze dazu (Rekord, Handys gesamt, Handy-Rekord). Sie sind auch im Spielstand-Code enthalten.
+- Die 3D-Technik wird nur geladen, wenn du 3D Run startest. Classic und Run starten so schnell wie vorher.
+
+### Änderungen
+- Die Versionsanzeige unten rechts steht jetzt auf **Version 2.0**.
+
 ## Version 1.5: Feinschliff
 
 ### Neu im Run-Modus

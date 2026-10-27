@@ -20,6 +20,21 @@
 <body>
   <div id="wrap">
     <canvas id="game"></canvas>
+    <canvas id="game3d" class="hidden"></canvas>
+
+    <!-- Anzeige im 3D Run -->
+    <div id="hud3d" class="hidden">
+      <div id="r3Meters" class="r3pill">0 m</div>
+      <div class="r3row">
+        <div class="r3pill r3phones"><i class="phone-ico"></i><span id="r3Phones">0</span></div>
+        <div id="r3Hearts"></div>
+      </div>
+      <div class="r3pus">
+        <div class="pu hidden" id="r3PuShoes"><span>Federschuhe</span><div class="bar"><i></i></div></div>
+        <div class="pu hidden" id="r3PuBee"><span>Biene</span><div class="bar"><i></i></div></div>
+      </div>
+    </div>
+    <div id="r3Msg" class="hidden"></div>
 
     <!-- Anzeige während der Runde -->
     <div id="hud" class="hidden">
@@ -67,6 +82,7 @@
         <div id="bestVal">
           <span id="bestClassic">Classic 0 m</span>
           <span id="bestRun">Run 0 m</span>
+          <span id="best3d">3D Run 0 m</span>
         </div>
       </div>
     </div>
@@ -90,8 +106,15 @@
         <h2>Modus</h2>
         <button class="btn mode" id="btnClassic">Classic<small>Endlos nach oben springen</small></button>
         <button class="btn mode" id="btnRun">Run<small>Laufen, springen, sliden</small></button>
+        <button class="btn mode mode3d" id="btnRun3d"><b class="newbadge">NEU</b>3D Run<small>Wischen, ausweichen, Handys sammeln</small></button>
+        <p id="r3LoadMsg" class="r3loadmsg"></p>
         <button class="btn ghost" id="btnModeBack">Zurück</button>
       </div>
+    </div>
+
+    <!-- 3D Run lädt -->
+    <div id="r3Loading" class="modal hidden">
+      <div class="panel"><h2>3D Run</h2><p class="r3wait">Lade die 3D-Welt …</p></div>
     </div>
 
     <!-- Einstellungen (Zahnrad) -->
@@ -135,5 +158,6 @@
 
   <script src="game.js"></script>
   <script src="run.js"></script>
+  <script src="run3d.js"></script>
 </body>
 </html>

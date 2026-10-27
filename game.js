@@ -7,7 +7,7 @@
    ========================================================= */
 
 // ---------- Spiel-Konstanten (hier kann man am Gameplay drehen) ----------
-const VERSION = '1.5';
+const VERSION = '2.0';
 const W = 400;               // logische Breite der Welt
 const G = 1800;                // Schwerkraft (Einheiten/s²)
 const JUMP_V = 900;            // Absprung-Geschwindigkeit
@@ -1433,7 +1433,10 @@ const save = {
   bestRun: store.get('porkjump_best_run', 0),
   earned: Math.max(store.get('porkjump_truffles_earned', 0), store.get('porkjump_truffles', 0)),
   spent: store.get('porkjump_truffles_spent', 0),
-  owned: store.get('porkjump_owned', [])          // gekaufte Skins/Sachen (für den Shop)
+  owned: store.get('porkjump_owned', []),         // gekaufte Skins/Sachen (für den Shop)
+  best3d: store.get('porkjump_best_3d', 0),       // 3D Run: weiteste Strecke
+  phones: store.get('porkjump_phones_total', 0),  // 3D Run: alle gesammelten Handys
+  bestPhones: store.get('porkjump_best_phones', 0)
 };
 let best = save.best;
 let bestRun = save.bestRun;
@@ -1448,6 +1451,9 @@ function mergeSave(other) {
   save.earned = Math.max(save.earned, num(other.earned));
   save.spent = Math.max(save.spent, num(other.spent));
   if (Array.isArray(other.owned)) for (const k of other.owned) if (!save.owned.includes(k)) save.owned.push(k);
+  save.best3d = Math.max(save.best3d, num(other.best3d));
+  save.phones = Math.max(save.phones, num(other.phones));
+  save.bestPhones = Math.max(save.bestPhones, num(other.bestPhones));
   best = save.best;
   bestRun = save.bestRun;
   truffleBank = save.earned - save.spent;
@@ -1460,6 +1466,9 @@ function saveLocal() {
   store.set('porkjump_truffles_spent', save.spent);
   store.set('porkjump_truffles', save.earned - save.spent);   // alter Schlüssel, für ältere Versionen
   store.set('porkjump_owned', save.owned);
+  store.set('porkjump_best_3d', save.best3d);
+  store.set('porkjump_phones_total', save.phones);
+  store.set('porkjump_best_phones', save.bestPhones);
 }
 
 // Server-Speicher (nur im Spiel-Link vorhanden; lokal geöffnet läuft alles nur über den Browser)
@@ -1469,7 +1478,8 @@ async function pushCloud() {
   if (cloudSave.busy) { cloudSave.dirty = true; return; }   // immer nur ein Schreibvorgang gleichzeitig
   cloudSave.busy = true;
   try {
-    await cloudSave.ref.set({ best: save.best, bestRun: save.bestRun, earned: save.earned, spent: save.spent, owned: save.owned, v: 1 });
+    await cloudSave.ref.set({ best: save.best, bestRun: save.bestRun, earned: save.earned, spent: save.spent, owned: save.owned,
+      best3d: save.best3d, phones: save.phones, bestPhones: save.bestPhones, v: 1 });
   } catch (e) {
     if (e && e.code === 'invalid_argument') cloudSave.ref = null;   // diese Person darf hier nicht speichern
   }
@@ -1499,7 +1509,8 @@ async function initCloudSave() {
     refreshBests();
     cloudSave.ref = ref;
     const same = remote && remote.best === save.best && remote.bestRun === save.bestRun && remote.earned === save.earned &&
-      remote.spent === save.spent && Array.isArray(remote.owned) && remote.owned.length === save.owned.length;
+      remote.spent === save.spent && Array.isArray(remote.owned) && remote.owned.length === save.owned.length &&
+      remote.best3d === save.best3d && remote.phones === save.phones && remote.bestPhones === save.bestPhones;
     if (!same) pushCloud();
   } catch (e) { /* kein Server-Speicher: Browser-Speicher reicht */ }
 }
@@ -2817,18 +2828,23 @@ const el = {
 const show = (e, on) => e.classList.toggle('hidden', !on);
 
 function setPlayUi(on) {
-  show(el.hud, on);
+  const is3d = mode === 'run3d';         // 3D Run: eigenes HUD, Wischen statt Buttons
+  show(el.hud, on && !is3d);
+  show($('hud3d'), on && is3d);
   show(el.btnPause, on);
-  show(el.left, on);
-  show(el.right, on);
+  show(el.left, on && !is3d);
+  show(el.right, on && !is3d);
 }
 
 const CTRL_ICONS = {
   classic: ['M15 4 L7 12 L15 20', 'M9 4 L17 12 L9 20'],
-  run: ['M4 8 L12 16 L20 8', 'M4 16 L12 8 L20 16']   // links: sliden (runter), rechts: springen (hoch)
+  run: ['M4 8 L12 16 L20 8', 'M4 16 L12 8 L20 16'],  // links: sliden (runter), rechts: springen (hoch)
+  run3d: ['M15 4 L7 12 L15 20', 'M9 4 L17 12 L9 20']  // im 3D Run nicht sichtbar (Wischsteuerung)
 };
 function setMode(m) {
   mode = m;
+  show(canvas, m !== 'run3d');
+  show($('game3d'), m === 'run3d');
   el.left.querySelector('path').setAttribute('d', CTRL_ICONS[m][0]);
   el.right.querySelector('path').setAttribute('d', CTRL_ICONS[m][1]);
   el.left.setAttribute('aria-label', m === 'run' ? 'Sliden' : 'Links');
@@ -2853,6 +2869,7 @@ function refreshBests() {
   $('shopWallet').textContent = truffleBank;
   $('bestClassic').textContent = `Classic ${best} m`;
   $('bestRun').textContent = `Run ${bestRun} m`;
+  $('best3d').textContent = `3D Run ${save.best3d} m`;
 }
 
 function startGame() {
@@ -2890,6 +2907,7 @@ function pauseGame() {
   if (state !== 'playing') return;
   state = 'paused';
   Sound.stopLoops();
+  if (mode === 'run3d') Sound.click();
   show(el.pause, true);
   el.btnPause.classList.add('active');
 }
@@ -2901,6 +2919,7 @@ function resumeGame() {
   input.left = input.right = false;
   show(el.pause, false);
   el.btnPause.classList.remove('active');
+  if (mode === 'run3d') { Sound.click(); r3Resume(); return; }
   if (player.bee > 0) Sound.startBuzz();
   if (player.call && player.call.phase !== 'dial') Sound.startHeli();
 }
@@ -2910,6 +2929,7 @@ function gameOver() {
   Sound.stopLoops();
   Sound.death();
   const isRun = mode === 'run';
+  if (mode === 'run3d') { gameOver3d(); return; }
   bankTruffles();
   const isRecord = meters > (isRun ? bestRun : best);
   if (isRecord && isRun) {
@@ -2928,7 +2948,25 @@ function gameOver() {
   setTimeout(() => { if (state === 'over') show(el.over, true); }, 450);
 }
 
+// 3D Run: eigene Bestleistung und Handy-Statistik (eigene Speicher-Schlüssel)
+function gameOver3d() {
+  const phones = r3 ? r3.phonesN : 0;
+  const isRecord = meters > save.best3d;
+  if (isRecord) save.best3d = meters;
+  save.phones += phones;
+  save.bestPhones = Math.max(save.bestPhones, phones);
+  saveProgress();
+  setPlayUi(false);
+  el.overScore.textContent = `${meters} m`;
+  show(el.overExtra, true);
+  el.overExtra.textContent = `${phones} Handys gesammelt`;
+  el.overBest.textContent = isRecord ? 'Neuer Rekord!' : `Rekord: ${save.best3d} m`;
+  el.overBest.classList.toggle('record', isRecord);
+  setTimeout(() => { if (state === 'over') show(el.over, true); }, 1300);
+}
+
 function toMenu() {
+  if (mode === 'run3d') { r3Exit(); setMode('classic'); }
   bankTruffles();
   Sound.stopLoops();
   heliLeave = null;
@@ -2971,10 +3009,11 @@ function refreshSoundButtons() {
 function tap(id, fn) {
   $(id).addEventListener('click', e => { e.preventDefault(); Sound.init(); Sound.click(); fn(); });
 }
-const retry = () => (mode === 'run' ? startRun() : startGame());
+const retry = () => (mode === 'run3d' ? startRun3d() : mode === 'run' ? startRun() : startGame());
 tap('btnStart', () => show(el.modeSelect, true));
 tap('btnClassic', startGame);
 tap('btnRun', () => startRun());
+tap('btnRun3d', () => startRun3d());
 tap('btnModeBack', () => show(el.modeSelect, false));
 tap('btnShop', openShop);
 tap('btnShopBack', () => show($('shop'), false));
@@ -3036,7 +3075,7 @@ function checksum(str) {
   return (h >>> 0).toString(36);
 }
 function exportSave() {
-  const body = JSON.stringify({ b: save.best, r: save.bestRun, e: save.earned, s: save.spent, o: save.owned });
+  const body = JSON.stringify({ b: save.best, r: save.bestRun, e: save.earned, s: save.spent, o: save.owned, b3: save.best3d, ph: save.phones, bp: save.bestPhones });
   return 'PJ1-' + btoa(unescape(encodeURIComponent(body))) + '-' + checksum(body);
 }
 function importSave(code) {
@@ -3047,7 +3086,7 @@ function importSave(code) {
   if (checksum(body) !== m[2]) return false;
   let d;
   try { d = JSON.parse(body); } catch (e) { return false; }
-  mergeSave({ best: d.b, bestRun: d.r, earned: d.e, spent: d.s, owned: d.o });
+  mergeSave({ best: d.b, bestRun: d.r, earned: d.e, spent: d.s, owned: d.o, best3d: d.b3, phones: d.ph, bestPhones: d.bp });
   saveProgress();
   refreshBests();
   return true;
@@ -3110,6 +3149,7 @@ const keyFor = e => keyMap[e.key] || (mode === 'run' && state === 'playing' ? ru
 const typing = e => e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT');
 window.addEventListener('keydown', e => {
   if (typing(e)) return;          // im Textfeld (Spielstand-Code) normal tippen lassen
+  if (mode === 'run3d' && state === 'playing' && r3Key(e)) { e.preventDefault(); return; }
   const k = keyFor(e);
   if (k) {
     if (k === 'right' && !e.repeat && !input.right) input.rightPress++;
@@ -3145,6 +3185,7 @@ function frame(ts) {
   if (last === null) last = ts;
   const dt = Math.min(0.05, (ts - last) / 1000);
   last = ts;
+  if (mode === 'run3d' && state !== 'menu') { r3Frame(dt); return; }
   if (state === 'playing') {
     // Bildzeit in gleich große Physik-Schritte (max. STEP) teilen: kein Ruckeln durch 1/2/3 Schritte pro Bild
     const n = Math.max(1, Math.ceil(dt / STEP - 1e-6));

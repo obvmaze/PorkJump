@@ -430,3 +430,88 @@ button {
   color: #3b1d2a;
   background: #fff;
 }
+
+/* ---------- 3D Run ---------- */
+#game3d { touch-action: none; }
+#hud3d {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 15;
+}
+.r3pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px 1px;
+  border-radius: 16px;
+  background: rgba(40, 14, 40, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-shadow: 2px 2px 0 #3b1d2a;
+}
+#r3Meters { font-size: 28px; }
+.r3row { display: flex; align-items: center; gap: 10px; }
+.r3phones { font-size: 22px; }
+.r3phones.pop { animation: r3pop 0.25s ease-out; }
+@keyframes r3pop { 40% { transform: scale(1.18); } }
+.phone-ico {
+  width: 13px;
+  height: 22px;
+  margin-top: -4px;
+  border-radius: 4px;
+  border: 2px solid #1e2236;
+  background: linear-gradient(#ff9ad5, #6a4cff);
+  box-shadow: 0 0 6px rgba(255, 180, 230, 0.8);
+}
+#r3Hearts { display: flex; gap: 3px; }
+#r3Hearts svg { width: 24px; height: 22px; filter: drop-shadow(1px 1px 0 #3b1d2a); }
+.r3pus { margin-top: 2px; }
+#r3PuShoes .bar i { background: #6ee7ff; }
+#r3PuBee .bar i { background: #ffd23f; }
+#r3Msg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 24%;
+  text-align: center;
+  font-size: 38px;
+  color: #ffd1dc;
+  text-shadow: 0 3px 0 #c2456e, 0 6px 0 #3b1d2a, 0 8px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 16;
+  padding: 0 16px;
+}
+#r3Msg.hint { font-size: 24px; color: #ffffff; text-shadow: 0 2px 0 #3b1d2a, 0 4px 10px rgba(0, 0, 0, 0.4); }
+#r3Msg.pop { animation: r3msg 0.35s ease-out; }
+@keyframes r3msg { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } }
+.btn.mode3d {
+  position: relative;
+  background: linear-gradient(135deg, #ff9ad5, #ffb36b 55%, #ffd23f);
+}
+.newbadge {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  padding: 3px 8px 1px;
+  border-radius: 10px;
+  border: 2px solid #3b1d2a;
+  background: #ff3b5c;
+  color: #fff;
+  font-size: 13px;
+  font-weight: normal;
+  transform: rotate(8deg);
+}
+.panel .r3loadmsg {
+  margin: 8px 0 0;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  color: #c2456e;
+  min-height: 0;
+}
+.panel .r3wait { font-size: 18px; animation: blink 0.8s steps(2) infinite; }
